@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>PO Tracker · 100 Food Source VN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F0F3FA;
+  --card:#FFFFFF;
+  --surf:#F7F9FD;
+  --border:#E3E9F4;
+  --border-strong:#C9D5EA;
+  --shadow:0 1px 4px rgba(20,40,80,.07),0 0 0 1px rgba(20,40,80,.04);
+  --shadow-lg:0 8px 32px rgba(20,40,80,.12),0 2px 8px rgba(20,40,80,.06);
+  --txt:#0D1A33;
+  --txt2:#2D3E5A;
+  --txt3:#5A6E8A;
+  --txt4:#92A3BA;
+  --accent:#1A56DB;
+  --accent2:#1347C0;
+  --accent-lt:#EBF0FD;
+  --accent-md:#B8CBFA;
+  --green:#0B8C5E;
+  --green-lt:#E8FAF3;
+  --green-md:#7DDBB8;
+  --amber:#B45309;
+  --amber-lt:#FEF9EC;
+  --amber-md:#FCD770;
+  --red:#C4302B;
+  --red-lt:#FEF1F1;
+  --red-md:#F8AAAA;
+  --teal:#0A8A82;
+  --teal-lt:#E8FAF9;
+  --teal-md:#6DDDD7;
+  --font:'DM Sans',system-ui,sans-serif;
+  --mono:'DM Mono',monospace;
+  --r:10px;--r2:14px;--r3:20px;
+}
+html,body{height:100%;background:var(--bg);font-family:var(--font);color:var(--txt);font-size:13px;line-height:1.5}
+
+/* ═══ LAYOUT ═══ */
+.app{display:grid;grid-template-rows:auto auto 1fr;height:100vh;padding:12px;gap:10px;max-width:1500px;margin:0 auto}
+
+/* ═══ TOPBAR ═══ */
+.topbar{background:var(--card);border:1px solid var(--border);border-radius:var(--r3);padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:var(--shadow)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:36px;height:36px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(26,86,219,.35)}
+.brand-mark svg{width:20px;height:20px;fill:white}
+.brand-name{font-size:14px;font-weight:700;color:var(--txt);letter-spacing:-.2px}
+.brand-sub{font-size:11px;color:var(--txt3);margin-top:1px}
+.topbar-actions{display:flex;align-items:center;gap:8px}
+.drop-zone{position:relative;display:flex;align-items:center;gap:10px;padding:8px 14px 8px 12px;background:var(--card);border:2px dashed var(--border-strong);border-radius:var(--r2);cursor:pointer;transition:all .18s;min-width:240px}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--accent);background:var(--accent-lt);box-shadow:0 0 0 3px rgba(26,86,219,.1)}
+.drop-zone.drag{border-style:solid}
+.drop-zone.loading{border-color:var(--accent);border-style:solid;background:var(--accent-lt);cursor:wait;pointer-events:none}
+.dz-icon{width:34px;height:34px;border-radius:9px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 6px rgba(26,86,219,.3);transition:transform .15s}
+.drop-zone:hover .dz-icon,.drop-zone.drag .dz-icon{transform:translateY(-2px);box-shadow:0 4px 12px rgba(26,86,219,.35)}
+.drop-zone.loading .dz-icon{background:var(--teal)}
+.dz-icon svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2.2}
+.dz-text{flex:1;min-width:0}
+.dz-title{font-size:12px;font-weight:700;color:var(--txt);line-height:1.2}
+.dz-sub{font-size:10px;color:var(--txt4);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dz-ok .dz-icon{background:var(--green)}
+.dz-ok{border-color:var(--green-md);border-style:solid;background:var(--green-lt)}
+.dz-err .dz-icon{background:var(--red)}
+.dz-err{border-color:var(--red-md);border-style:solid;background:var(--red-lt)}
+#file-in{display:none}
+/* spinner */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin .7s linear infinite;display:inline-block}
+
+/* ═══ STATS BAR ═══ */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:10px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.stat.s-total::before{background:var(--accent)}
+.stat.s-arr::before{background:var(--teal)}
+.stat.s-pend::before{background:var(--amber)}
+.stat.s-ovd::before{background:var(--red)}
+.stat.s-items::before{background:var(--green)}
+.stat-lbl{font-size:10px;font-weight:600;color:var(--txt4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.stat-val{font-size:28px;font-weight:800;letter-spacing:-1.5px;line-height:1;font-variant-numeric:tabular-nums}
+.stat.s-total .stat-val{color:var(--accent)}
+.stat.s-arr .stat-val{color:var(--teal)}
+.stat.s-pend .stat-val{color:var(--amber)}
+.stat.s-ovd .stat-val{color:var(--red)}
+.stat.s-items .stat-val{color:var(--green)}
+.stat-sub{font-size:11px;color:var(--txt3);margin-top:3px}
+
+/* ═══ MAIN BODY ═══ */
+.main{display:grid;grid-template-columns:1fr;gap:10px;min-height:0;overflow:hidden}
+.main.split{grid-template-columns:minmax(0,1fr) 430px}
+
+/* ═══ CALENDAR CARD ═══ */
+.cal-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r3);padding:16px;box-shadow:var(--shadow);overflow-y:auto}
+.cal-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:var(--surf);border-radius:var(--r);border:1px solid var(--border)}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt3)}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cal-tabs{display:flex;gap:3px;padding:3px;background:#E5EBF5;border-radius:12px;margin-bottom:14px}
+.tab{flex:1;padding:7px 8px;border:none;background:transparent;border-radius:10px;font:600 12px/1 var(--font);color:var(--txt3);cursor:pointer;transition:all .15s;text-align:center}
+.tab.on{background:var(--card);color:var(--accent);box-shadow:var(--shadow);border:1px solid var(--accent-md)}
+.calsec{display:none}.calsec.on{display:block}
+.cal-note{font-size:11px;color:var(--txt4);margin-bottom:10px}
+.cal-dheads{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:3px}
+.dh{text-align:center;font-size:9px;font-weight:700;color:var(--txt4);padding:3px 0;letter-spacing:.5px;text-transform:uppercase}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.day{min-height:74px;border-radius:var(--r);padding:5px 5px 4px;border:1.5px solid transparent;background:#EEF3FA;transition:all .12s;cursor:default}
+.day.has{background:var(--card);border-color:var(--border);cursor:pointer}
+.day.has:hover{border-color:var(--accent);background:var(--accent-lt);transform:translateY(-1px);box-shadow:var(--shadow)}
+.day.sel{border-color:var(--accent)!important;background:var(--accent-lt)!important;box-shadow:0 0 0 3px rgba(26,86,219,.15)}
+.day.today .day-n{color:var(--accent);font-weight:800}
+.day.today{border-color:var(--accent-md)}
+.day-n{text-align:right;font-size:11px;font-weight:500;color:var(--txt4);margin-bottom:3px}
+.day-po{font-size:10px;font-weight:700;color:var(--txt3);line-height:1.2}
+.day-brands{font-size:9px;color:var(--txt4);margin-top:2px;line-height:1.3;overflow:hidden;max-height:26px}
+.day-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:3px}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot.a{background:#2DD4BF}.dot.p{background:#FBBF24}.dot.o{background:#F87171}
+
+/* ═══ SIDE PANEL ═══ */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r3);box-shadow:var(--shadow);display:none;flex-direction:column;min-height:0;position:relative;overflow:hidden}
+.panel.on{display:flex}
+.panel-head{padding:13px 15px 10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surf)}
+.panel-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.panel-title{font-size:15px;font-weight:800;color:var(--txt)}
+.panel-sub{font-size:11px;color:var(--txt3);margin-top:3px}
+.panel-close{width:28px;height:28px;border:1px solid var(--border);border-radius:8px;background:var(--card);cursor:pointer;color:var(--txt3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;transition:all .1s}
+.panel-close:hover{background:var(--border);color:var(--txt)}
+.panel-body{flex:1;overflow-y:auto;padding:12px 14px;scroll-behavior:smooth}
+.panel-body::-webkit-scrollbar{width:4px}
+.panel-body::-webkit-scrollbar-track{background:transparent}
+.panel-body::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:2px}
+
+/* ═══ PO CARD in list ═══ */
+.po-card{border:1px solid var(--border);border-radius:var(--r2);margin-bottom:10px;background:var(--surf);overflow:hidden;transition:border-color .12s,box-shadow .12s}
+.po-card:hover{border-color:var(--accent-md);box-shadow:var(--shadow)}
+.poc-top{padding:11px 13px 9px}
+.poc-hd{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px}
+.poc-num{font:800 12px/1 var(--mono);color:var(--accent);letter-spacing:-.2px}
+.pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;letter-spacing:.1px}
+.pill.a{background:var(--teal-lt);color:var(--teal);border:1px solid var(--teal-md)}
+.pill.p{background:var(--amber-lt);color:var(--amber);border:1px solid var(--amber-md)}
+.pill.o{background:var(--red-lt);color:var(--red);border:1px solid var(--red-md)}
+.poc-label{font-size:13px;font-weight:700;color:var(--txt2);margin-bottom:2px;line-height:1.35}
+.poc-cred{font-size:11px;color:var(--txt4);margin-bottom:6px}
+.poc-meta{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--txt3);margin-bottom:7px}
+.poc-meta span{display:flex;align-items:center;gap:3px}
+.brands-row{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:9px}
+.brand-chip{font-size:10px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:2px 7px;color:var(--txt3);font-weight:500}
+/* Item table inside card */
+.poc-table{border-top:1px solid var(--border)}
+.poc-table-head{display:grid;grid-template-columns:76px 1fr 54px;gap:6px;padding:5px 12px;background:#EEF3FA;font-size:10px;font-weight:700;color:var(--txt4);text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--border)}
+.poc-row{display:grid;grid-template-columns:76px 1fr 54px;gap:6px;padding:7px 12px;font-size:11px;border-bottom:1px solid var(--border);align-items:start;transition:background .08s}
+.poc-row:hover{background:var(--accent-lt)}
+.poc-row:last-child{border-bottom:none}
+.poc-row:nth-child(odd){background:var(--surf)}
+.poc-row:nth-child(odd):hover{background:var(--accent-lt)}
+.pr-code{font:700 10px/1.3 var(--mono);color:var(--accent);word-break:break-all}
+.pr-name{color:var(--txt2);line-height:1.4}
+.pr-brand{font-size:9px;color:var(--txt4);margin-top:1px}
+.pr-qty{text-align:right;font:700 12px/1 var(--mono);color:var(--green)}
+.poc-more{font-size:10px;color:var(--txt4);padding:5px 12px;text-align:center;background:var(--surf);font-style:italic}
+/* Footer */
+.poc-footer{padding:8px 13px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surf)}
+.toggle-row{display:flex;align-items:center;gap:7px}
+.sw{position:relative;width:34px;height:19px;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0;position:absolute}
+.sw-track{position:absolute;cursor:pointer;inset:0;background:#CBD5E8;border-radius:10px;transition:.2s}
+.sw-track::before{position:absolute;content:'';height:15px;width:15px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.sw input:checked+.sw-track{background:var(--teal)}
+.sw input:checked+.sw-track::before{transform:translateX(15px)}
+.sw-lbl{font-size:10px;font-weight:600;color:var(--txt3)}
+.btn-detail{font:700 11px/1 var(--font);color:var(--accent);border:none;background:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:2px}
+.btn-detail:hover{text-decoration:underline}
+/* Arrival determined by fulfillment date only — hide manual toggle */
+.toggle-row{display:none}
+
+/* ═══ DETAIL VIEW ═══ */
+.back{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border:1px solid var(--border);border-radius:var(--r);background:var(--surf);font:500 12px/1 var(--font);color:var(--txt3);cursor:pointer;margin-bottom:12px;transition:background .1s}
+.back:hover{background:var(--border)}
+.det-card{background:linear-gradient(135deg,var(--accent-lt) 0%,var(--card) 60%);border:1px solid var(--accent-md);border-radius:var(--r2);padding:15px;margin-bottom:12px}
+.det-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+.det-title{font-size:16px;font-weight:800;color:var(--txt);line-height:1.25;display:flex;align-items:flex-start;flex-wrap:wrap;gap:7px}
+.det-po-num{font:700 13px/1 var(--mono);color:var(--accent);background:var(--accent-lt);border:1px solid var(--accent-md);padding:3px 8px;border-radius:6px}
+.det-cred{font-size:12px;color:var(--txt3);margin-bottom:9px;display:flex;align-items:center;gap:5px}
+.det-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.dg-item{font-size:11px;color:var(--txt3)}.dg-item strong{color:var(--txt2);font-weight:700}
+.brand-tbl{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px}
+.btbl-head{display:grid;grid-template-columns:1fr 50px 70px;gap:6px;padding:5px 10px;background:#EEF3FA;font-size:10px;font-weight:700;color:var(--txt4);text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--border)}
+.btbl-row{display:grid;grid-template-columns:1fr 50px 70px;gap:6px;padding:6px 10px;font-size:11px;border-bottom:1px solid var(--border);align-items:center}
+.btbl-row:last-child{border:none}
+.btbl-row:nth-child(even){background:var(--surf)}
+.btbl-brand{font-weight:600;color:var(--txt2)}
+.btbl-cnt{color:var(--txt4);text-align:right}
+.btbl-qty{font:700 12px/1 var(--mono);color:var(--green);text-align:right}
+.det-toggle{display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--accent-md)}
+.search-wrap{position:relative;margin-bottom:10px}
+.search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--txt4);font-size:14px;pointer-events:none}
+.search-inp{width:100%;padding:8px 11px 8px 32px;border:1.5px solid var(--border);border-radius:var(--r);background:var(--surf);color:var(--txt);font:400 12px/1 var(--font);outline:none;transition:border .12s}
+.search-inp:focus{border-color:var(--accent)}
+.items-table{border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+.it-head{display:grid;grid-template-columns:76px 1fr 60px 50px;gap:6px;padding:7px 10px;background:#EEF3FA;font-size:10px;font-weight:700;color:var(--txt4);text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--border)}
+.it-row{display:grid;grid-template-columns:76px 1fr 60px 50px;gap:6px;padding:8px 10px;font-size:11px;border-bottom:1px solid var(--border);align-items:start;transition:background .08s}
+.it-row:hover{background:var(--accent-lt)}
+.it-row:last-child{border:none}
+.it-row:nth-child(even){background:var(--surf)}
+.it-row:nth-child(even):hover{background:var(--accent-lt)}
+.it-code{font:700 10px/1.3 var(--mono);color:var(--accent);word-break:break-all}
+.it-name{color:var(--txt2);line-height:1.4}
+.it-brand{font-size:9px;color:var(--txt4);margin-top:1px}
+.it-qty{text-align:right;font:700 12px/1 var(--mono);color:var(--green)}
+.it-date{font:400 10px/1 var(--mono);color:var(--txt4)}
+.it-foot{display:flex;justify-content:space-between;padding:7px 10px;background:#EEF3FA;border-top:1px solid var(--border);font-size:11px;color:var(--txt3)}
+.it-foot strong{color:var(--txt);font:700 13px/1 var(--mono)}
+
+/* IMPORT MODAL CSS removed */
+
+/* ═══ TOAST ═══ */
+.toast{position:fixed;bottom:18px;right:18px;padding:10px 18px;border-radius:var(--r);font:700 12px/1 var(--font);color:#fff;opacity:0;transform:translateY(10px);transition:all .22s;pointer-events:none;z-index:999;box-shadow:var(--shadow-lg)}
+.toast.on{opacity:1;transform:translateY(0)}
+.toast.ok{background:#0B8C5E}.toast.err{background:#C4302B}
+
+/* ═══ EMPTY STATE ═══ */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;color:var(--txt4);text-align:center;gap:8px}
+.empty-ico{font-size:40px;opacity:.4}
+
+@media(max-width:960px){.main.split{grid-template-columns:1fr}.stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM4 9h16v2H4V9zm0 4h6v6H4v-6zm8 6v-6h8v6h-8z"/><path d="M7 3h10l2 4H5l2-4z"/></svg>
+    </div>
+    <div>
+      <div class="brand-name">PO Tracker · 100 Food Source VN</div>
+      <div class="brand-sub" id="app-sub">Loading…</div>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <div id="drop-zone" class="drop-zone" onclick="document.getElementById('file-in').click()"
+         ondragover="dzDrag(event,true)" ondragleave="dzDrag(event,false)" ondrop="dzDrop(event)">
+      <div class="dz-icon" id="dz-icon">
+        <svg id="dz-svg-up" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <svg id="dz-svg-ok" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
+        <svg id="dz-svg-spin" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" style="display:none" class="spin"><path stroke-linecap="round" d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+      </div>
+      <div class="dz-text">
+        <div class="dz-title" id="dz-title">Import Excel</div>
+        <div class="dz-sub" id="dz-sub">Drag & drop or click · .xls / .xlsx</div>
+      </div>
+    </div>
+    <input type="file" id="file-in" accept=".xls,.xlsx,.csv" onchange="onFileChange(this)">
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat s-total"><div class="stat-lbl">Total PO</div><div class="stat-val" id="st-po">—</div><div class="stat-sub">purchase orders</div></div>
+  <div class="stat s-arr"><div class="stat-lbl">Received</div><div class="stat-val" id="st-arr">—</div><div class="stat-sub">confirmed arrived</div></div>
+  <div class="stat s-pend"><div class="stat-lbl">Pending</div><div class="stat-val" id="st-pend">—</div><div class="stat-sub">awaiting delivery</div></div>
+  <div class="stat s-ovd" style="display:none"><div class="stat-lbl">Overdue</div><div class="stat-val" id="st-ovd">—</div><div class="stat-sub">past delivery date</div></div>
+  <div class="stat s-items"><div class="stat-lbl">Line Items</div><div class="stat-val" id="st-items">—</div><div class="stat-sub">total line items</div></div>
+</div>
+
+<!-- MAIN -->
+<div class="main" id="main">
+  <!-- Calendar -->
+  <div class="cal-card">
+    <div class="cal-legend">
+      <div class="leg"><div class="leg-dot" style="background:#2DD4BF"></div>Received</div>
+      <div class="leg"><div class="leg-dot" style="background:#FBBF24"></div>Pending</div>
+      
+      <span style="margin-left:auto;font-size:11px;color:var(--txt4)">Click a date to view POs →</span>
+    </div>
+    <div class="cal-tabs">
+      <button class="tab on" id="tab4" onclick="switchM(4)">May · 2026</button>
+      <button class="tab" id="tab5" onclick="switchM(5)">Jun · 2026</button>
+      <button class="tab" id="tab6" onclick="switchM(6)">Jul · 2026</button>
+    </div>
+    <div id="cs4" class="calsec on"></div>
+    <div id="cs5" class="calsec"></div>
+    <div id="cs6" class="calsec"></div>
+  </div>
+
+  <!-- Side panel -->
+  <div class="panel" id="panel">
+    <div class="panel-head" id="panel-head"></div>
+    <div class="panel-body" id="panel-body"></div>
+  </div>
+</div>
+</div><!-- .app -->
+
+<div class="toast" id="toast"></div>
+
+<!-- IMPORT MODAL removed - auto-import -->
+
+<script>
+const PO=[{"po":"4002977","raw_po":"4002977 (Completed)","label":"260505-CEB-HN","creditor":"THUC PHAM CEBON, Ha","brands":["Cebon"],"date":"2026-05-05","items":[{"c":"CEBF16-0021","n":"Whole duck 1.8kg+","b":"Cebon","q":34.0,"d":"2026-05-05","u":"kg"},{"c":"CEBF16-0002","n":"Bone in Duck Breast","b":"Cebon","q":3.0,"d":"2026-05-05","u":"kg"},{"c":"CEBF16-0021","n":"Whole duck 1.8kg+","b":"Cebon","q":11.8,"d":"2026-05-05","u":"kg"},{"c":"CEBF16-0002","n":"Bone in Duck Breast","b":"Cebon","q":6.9,"d":"2026-05-05","u":"kg"}]},{"po":"4002978","raw_po":"4002978 (Completed)","label":"260505-PAC-HN","creditor":"PHAT TRIEN HAU DAI DUONG, --","brands":["Pacific Oyster"],"date":"2026-05-05","items":[{"c":"PACC23-0004","n":"Fine De Claire Oyster 10/13 pcs kg","b":"Pacific Oyster","q":100.0,"d":"2026-05-05","u":"pc"}]},{"po":"4002985","raw_po":"4002985 (Completed)","label":"260506-DTC","creditor":"DONG THANH HA NOI, Hung","brands":["Trusted Beef"],"date":"2026-05-06","items":[{"c":"TRUC11-0001","n":"A Beef Tenderloin 1.8kg up","b":"Trusted Beef","q":389.02,"d":"2026-05-06","u":"kg"}]},{"po":"4002987","raw_po":"4002987 (Completed)","label":"260506-CEB-HN","creditor":"THUC PHAM CEBON, Ha","brands":["Cebon"],"date":"2026-05-06","items":[{"c":"CEBF16-0021","n":"Whole duck 1.8kg+","b":"Cebon","q":28.3,"d":"2026-05-06","u":"kg"},{"c":"CEBF16-0011","n":"Duck Leg 300g+","b":"Cebon","q":14.3,"d":"2026-05-06","u":"kg"},{"c":"CEBC16-0023","n":"Duck Bone","b":"Cebon","q":10.7,"d":"2026-05-06","u":"kg"},{"c":"CEBC16-0001","n":"Duck Breast 300g up","b":"Cebon","q":16.0,"d":"2026-05-06","u":"kg"}]},{"po":"4002991","raw_po":"4002991 (Completed)","label":"260513-DTC","creditor":"DONG THANH HA NOI, Hung","brands":["Trusted Beef"],"date":"2026-05-13","items":[{"c":"TRUC11-0001","n":"A Beef Tenderloin 1.8kg up","b":"Trusted Beef","q":790.12,"d":"2026-05-13","u":"kg"}]},{"po":"4002995","raw_po":"4002995 (Completed)","label":"260507-DTV-HN","creditor":"CN CONG TY CP DAI TAN VIET TAI HA NOI, --","brands":["Amacore"],"date":"2026-05-07","items":[{"c":"AMAF21-0001","n":"B/I Black Cod Fish H&G Size 2.3-3.2kg","b":"Amacore","q":45.36,"d":"2026-05-07","u":"kg"}]},{"po":"4002999","raw_po":"4002999 (Completed)","label":"260508-CEB-HN","creditor":"THUC PHAM CEBON, Ha","brands":["Cebon"],"date":"2026-05-08","items":[{"c":"CEBF16-0021","n":"Whole duck 1.8kg+","b":"Cebon","q":21.0,"d":"2026-05-08","u":"kg"},{"c":"CEBF16-0002","n":"Bone in Duck Breast","b":"Cebon","q":21.7,"d":"2026-05-08","u":"kg"}]},{"po":"4003001","raw_po":"4003001 (Completed)","label":"260509-AQS-HN","creditor":"XNK AQUA SEAFOOD, --","brands":["Reunion Peche Australe"],"date":"2026-05-09","items":[{"c":"RPAF21-0001","n":"Patagonian Toothfish 5-6kg","b":"Reunion Peche Australe","q":38.08,"d":"2026-05-09","u":"kg"}]},{"po":"4003003","raw_po":"4003003 (Completed)","label":"260511-CEB-HN","creditor":"THUC PHAM CEBON, Ha","brands":["Cebon"],"date":"2026-05-11","items":[{"c":"CEBF16-0002","n":"Bone in Duck Breast","b":"Cebon","q":45.5,"d":"2026-05-11","u":"kg"},{"c":"CEBF16-0001","n":"Duck Breast 300g+","b":"Cebon","q":3.8,"d":"2026-05-11","u":"kg"}]},{"po":"4003004","raw_po":"4003004 (Completed)","label":"260512-PAC-HN","creditor":"PHAT TRIEN HAU DAI DUONG, --","brands":["Pacific Oyster"],"date":"2026-05-12","items":[{"c":"PACC23-0004","n":"Fine De Claire Oyster 10/13 pcs kg","b":"Pacific Oyster","q":100.0,"d":"2026-05-12","u":"pc"}]},{"po":"4003012","raw_po":"4003012 (Completed)","label":"260513-CEB-HN","creditor":"THUC PHAM CEBON, Ha","brands":["Cebon"],"date":"2026-05-13","items":[{"c":"CEBF16-0002","n":"Bone in Duck Breast","b":"Cebon","q":18.7,"d":"2026-05-13","u":"kg"},{"c":"CEBF16-0003","n":"Duck Neck Skin 2.7kg","b":"Cebon","q":4.2,"d":"2026-05-13","u":"kg"}]},{"po":"4003017","raw_po":"4003017 (Completed)","label":"260515-CEB-HN","creditor":"THUC PHAM CEBON, Ha","brands":["Cebon"],"date":"2026-05-15","items":[{"c":"CEBF16-0021","n":"Whole duck 1.8kg+","b":"Cebon","q":64.6,"d":"2026-05-15","u":"kg"},{"c":"CEBF16-0002","n":"Bone in Duck Breast","b":"Cebon","q":23.3,"d":"2026-05-15","u":"kg"}]},{"po":"4003025","raw_po":"4003025 (Completed)","label":"260518-CEB-HN","creditor":"THUC PHAM CEBON, Ha","brands":["Cebon"],"date":"2026-05-18","items":[{"c":"CEBC16-0001","n":"Duck Breast 300g up","b":"Cebon","q":4.1,"d":"2026-05-18","u":"kg"},{"c":"CEBF16-0002","n":"Bone in Duck Breast","b":"Cebon","q":44.4,"d":"2026-05-18","u":"kg"}]},{"po":"4003028","raw_po":"4003028 (Completed)","label":"260519-PAC-HN","creditor":"PHAT TRIEN HAU DAI DUONG, --","brands":["Pacific Oyster"],"date":"2026-05-19","items":[{"c":"PACC23-0004","n":"Fine De Claire Oyster 10/13 pcs kg","b":"Pacific Oyster","q":100.0,"d":"2026-05-19","u":"pc"}]},{"po":"4003029","raw_po":"4003029 (Printed)","label":"260520-DTC","creditor":"DONG THANH HA NOI, Hung","brands":["Trusted Beef"],"date":"2026-05-20","items":[{"c":"TRUC11-0001","n":"A Beef Tenderloin 1.8kg up","b":"Trusted Beef","q":483.84,"d":"2026-05-20","u":"kg"},{"c":"TRUC11-0001","n":"A Beef Tenderloin 1.8kg up","b":"Trusted Beef","q":16.16,"d":"2026-05-20","u":"kg"}]},{"po":"4003033","raw_po":"4003033 (Completed)","label":"260519-AQUA-HN","creditor":"XNK AQUA SEAFOOD, --","brands":["Reunion Peche Australe"],"date":"2026-05-19","items":[{"c":"RPAF21-0002","n":"Patagonian Toothfish 6-8kg","b":"Reunion Peche Australe","q":38.84,"d":"2026-05-19","u":"kg"}]},{"po":"4003042","raw_po":"4003042 (Completed)","label":"260520-CEB-HN","creditor":"THUC PHAM CEBON, Ha","brands":["Cebon"],"date":"2026-05-20","items":[{"c":"CEBC16-0022","n":"Whole duck 1.8kg+","b":"Cebon","q":15.8,"d":"2026-05-20","u":"kg"},{"c":"CEBF16-0002","n":"Bone in Duck Breast","b":"Cebon","q":9.3,"d":"2026-05-20","u":"kg"}]},{"po":"4003044","raw_po":"4003044 (Completed)","label":"260521-CEB-HN","creditor":"THUC PHAM CEBON, Ha","brands":["Cebon"],"date":"2026-05-21","items":[{"c":"CEBC16-0022","n":"Whole duck 1.8kg+","b":"Cebon","q":37.4,"d":"2026-05-21","u":"kg"},{"c":"CEBF16-0002","n":"Bone in Duck Breast","b":"Cebon","q":21.4,"d":"2026-05-21","u":"kg"},{"c":"CEBC16-0001","n":"Duck Breast 300g up","b":"Cebon","q":41.8,"d":"2026-05-21","u":"kg"},{"c":"CEBF16-0011","n":"Duck Leg 300g+","b":"Cebon","q":4.6,"d":"2026-05-21","u":"kg"}]},{"po":"4002702","raw_po":"4002702 (Printed)","label":"260529-MUL2619-2453","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Marrunga Marble","Shimo","Mulwarra","AMH","Bachelor","Kidman","The","Borrowdale","P J Meat","Glacier"],"date":"2026-05-29","items":[{"c":"MARF13-2085","n":"B/L Lamb Chump/Rump (cap on)","b":"Marrunga Marble","q":826.27,"d":"2026-05-29","u":"kg"},{"c":"MARF13-4756","n":"B/I Lamb Rack (frenched cap on)","b":"Marrunga Marble","q":703.8,"d":"2026-05-29","u":"kg"},{"c":"MARF13-5011","n":"B/L Lamb Flap","b":"Marrunga Marble","q":1038.27,"d":"2026-05-29","u":"kg"},{"c":"MARF13-25601","n":"B/L Lamb Trimmings 65CL","b":"Marrunga Marble","q":709.86,"d":"2026-05-29","u":"kg"},{"c":"SHIF12-25602","n":"B/L Wagyu Beef Trimming 65CLBP","b":"Shimo","q":2529.6,"d":"2026-05-29","u":"kg"},{"c":"SHIF12-16038","n":"B/I Grain-Fed Wagyu S Beef Tomahawk Portion M8/9","b":"Shimo","q":120.3,"d":"2026-05-29","u":"kg"},{"c":"SHIF12-20906","n":"B/L Grain Fed Wagyu S Beef D Rump MS6","b":"Shimo","q":506.3,"d":"2026-05-29","u":"kg"},{"c":"MULF13-4764","n":"B/I Lamb Rack (frenched cap off) 680g up","b":"Mulwarra","q":151.2,"d":"2026-05-29","u":"kg"},{"c":"AMHF11-1609","n":"B/I Grain-Fed PR Beef Cap Off OP Ribs","b":"AMH","q":299.05,"d":"2026-05-29","u":"kg"},{"c":"AMHF11-1604","n":"B/I Grain Fed S Beef 7 Rib Cap Off Tomahawk Slab","b":"AMH","q":194.8,"d":"2026-05-29","u":"kg"},{"c":"BACF11-2465","n":"B/I Grain Fed  Black Angus Beef Short Ribs MS2","b":"Bachelor","q":399.25,"d":"2026-05-29","u":"kg"},{"c":"KIDF12-23034","n":"B/L Grain Fed Wagyu S Beef Oyster Blade MS4/5","b":"Kidman","q":742.5,"d":"2026-05-29","u":"kg"},{"c":"KIDF12-23532","n":"B/L Grain Fed Wagyu Beef PEDO Brisket MS2/3","b":"Kidman","q":486.2,"d":"2026-05-29","u":"kg"},{"c":"KIDF12-1609","n":"B/I Grain Fed Wagyu Beef OP ribs Cap off MS2/3","b":"Kidman","q":190.96,"d":"2026-05-29","u":"kg"},{"c":"KIDF12-22105","n":"B/L F Grain Fed Wagyu Beef Flank Steak MS4/5","b":"Kidman","q":120.46,"d":"2026-05-29","u":"kg"},{"c":"KIDF12-2268","n":"B/L F Grain Fed Wagyu Beef Chuck Eye Roll MS2/3","b":"Kidman","q":306.94,"d":"2026-05-29","u":"kg"},{"c":"AACF12-21403","n":"B/L Grain Fed Wagyu S Beef 1 Rib Striploin MS3","b":"The","q":553.55,"d":"2026-05-29","u":"kg"},{"c":"AACF12-22403","n":"B/L Grain Fed Wagyu S Beef 7 Rib Cube Roll MS3","b":"The","q":527.6,"d":"2026-05-29","u":"kg"},{"c":"BORF15-0001","n":"B/I Pork 10 Rib Rack (rind on)","b":"Borrowdale","q":251.43,"d":"2026-05-29","u":"kg"},{"c":"PJMF13-4764","n":"B/I Lamb Rack (frenched cap off) 600g up","b":"P J Meat","q":509.46,"d":"2026-05-29","u":"kg"},{"c":"GLAF21-0001","n":"B/L Patagonian Toothfish Fillet 600g-2kg","b":"Glacier","q":172.44,"d":"2026-05-29","u":"kg"},{"c":"GLAF21-0011","n":"B/L Patagonian Toothfish Portion 150g","b":"Glacier","q":432.0,"d":"2026-05-29","u":"kg"}]},{"po":"4002828","raw_po":"4002828 (Printed)","label":"ANB · Beef · Angus","creditor":"ALTOTHEA LIMITED","brands":["ANB"],"date":"2026-06-04","items":[{"c":"ANBC11-2140","n":"B/L Black Angus Beef 1 Rib Striploin 4kg up","b":"ANB","q":240.0,"d":"2026-06-04","u":"kg"},{"c":"ANBC11-2240","n":"B/L Black Angus Beef Ribeye 2.5kg up","b":"ANB","q":700.0,"d":"2026-06-04","u":"kg"},{"c":"ANBC11-2241","n":"B/L Black Angus Beef Ribeye (Half Pack)","b":"ANB","q":100.0,"d":"2026-06-04","u":"kg"},{"c":"ANBC11-2160","n":"B/L Black Angus Beef Tenderloin 1.8kg up","b":"ANB","q":700.0,"d":"2026-06-04","u":"kg"},{"c":"ANBC11-2204","n":"B/L Grain-Fed Beef Thick Skirt","b":"ANB","q":140.0,"d":"2026-06-04","u":"kg"},{"c":"ANBC11-2210","n":"B/L Grain-Fed Black Angus Beef Flank Steak","b":"ANB","q":100.0,"d":"2026-06-04","u":"kg"},{"c":"ANBC11-2206","n":"B/L Grain Fed  Black Angus Beef Flap Meat","b":"ANB","q":160.0,"d":"2026-06-04","u":"kg"},{"c":"ANBC11-2304","n":"B/L Grain Fed Black Angus Beef Flat Iron Steak","b":"ANB","q":300.0,"d":"2026-06-04","u":"kg"},{"c":"ANBC11-2190","n":"B/L Grain-Fed Beef Thin Skirt","b":"ANB","q":200.0,"d":"2026-06-04","u":"kg"},{"c":"ANBC11-21401","n":"B/L Black Angus Beef 1 Rib Striploin 1kg","b":"ANB","q":50.0,"d":"2026-06-04","u":"kg"}]},{"po":"4002895","raw_po":"4002895 (Printed)","label":"260522-MAN2601","creditor":"AZIENDA AGRICOLA MANCINI SOCIETÀ AGRICOLA SRL, --","brands":["Mancini"],"date":"2026-05-22","items":[{"c":"MAND64-0002","n":"Linguine 500g","b":"Mancini","q":2304.0,"d":"2026-05-22","u":"kg"},{"c":"MAND64-0004","n":"Mezzi Paccheri 500g","b":"Mancini","q":2016.0,"d":"2026-05-22","u":"kg"}]},{"po":"4002896","raw_po":"4002896 (Printed)","label":"260527-RIS2601","creditor":"RISTORIS SRL, --","brands":["Ristoris"],"date":"2026-05-27","items":[{"c":"RISD65-0041","n":"Anchovy in fillets 700g","b":"Ristoris","q":648.0,"d":"2026-05-22","u":"kg"}]},{"po":"4002897","raw_po":"4002897 (Printed)","label":"260522-GEO2601","creditor":"GEOFOODS ITALIAN TRUFFLES","brands":["Geofoods"],"date":"2026-05-22","items":[{"c":"GEOD64-0021","n":"Truffle Dust 1.5g","b":"Geofoods","q":480.0,"d":"2026-05-22","u":"kg"},{"c":"GEOD64-0022","n":"Truffle Sauce Salsa Tartufata 500g","b":"Geofoods","q":432.0,"d":"2026-05-22","u":"kg"},{"c":"GEOD64-0032","n":"Winter Truffle Olive Oil w.Slice 250g","b":"Geofoods","q":156.0,"d":"2026-05-22","u":"kg"},{"c":"GEOD64-0031","n":"White Truffle Olive Oil w.Slice 250g","b":"Geofoods","q":108.0,"d":"2026-05-22","u":"kg"}]},{"po":"4002899","raw_po":"4002899 (Completed)","label":"260504-MUL2621-2720","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Shimo","Riverina","Bone Roasters","Meredith Dairy"],"date":"2026-05-04","items":[{"c":"SHIC12-22067","n":"B/L Grain-Fed Wagyu S Beef Flap Meat MS7/8","b":"Shimo","q":154.9,"d":"2026-05-04","u":"kg"},{"c":"SHIC12-22076","n":"B/L Grain-Fed Wagyu S Beef Flank Steak MB6/7","b":"Shimo","q":33.8,"d":"2026-05-04","u":"kg"},{"c":"SHIC12-24656","n":"B/L GF Wagyu Short Rib Meat MS6/7","b":"Shimo","q":54.9,"d":"2026-05-04","u":"kg"},{"c":"SHIC12-22801","n":"B/L E Grain-Fed Wagyu S Beef Neck Meat MS9+","b":"Shimo","q":139.5,"d":"2026-05-04","u":"kg"},{"c":"RIVC11-2240","n":"B/L Grain Fed Black Angus 7 Rib Cuberoll MS3+","b":"Riverina","q":266.2,"d":"2026-05-04","u":"kg"},{"c":"BOND64-0002","n":"Veal Stock 15 brix 500g","b":"Bone Roasters","q":720.0,"d":"2026-05-04","u":"kg"},{"c":"MERC31-0003","n":"Fresh Goat Cheese 80g","b":"Meredith Dairy","q":48.0,"d":"2026-05-04","u":"kg"},{"c":"MERC31-0042","n":"Fresh Goat Cheese with Dill 80g","b":"Meredith Dairy","q":48.0,"d":"2026-05-04","u":"kg"},{"c":"MERC31-0002","n":"Fresh Goat Cheese 1kg","b":"Meredith Dairy","q":48.0,"d":"2026-05-04","u":"kg"},{"c":"SHIC12-22801","n":"B/L E Grain-Fed Wagyu S Beef Neck Meat MS9+","b":"Shimo","q":-3.3,"d":"2026-05-04","u":"kg"},{"c":"SHIC12-22801","n":"B/L E Grain-Fed Wagyu S Beef Neck Meat MS9+","b":"Shimo","q":-136.2,"d":"2026-05-04","u":"kg"},{"c":"SHIC12-22809","n":"B/L Grain-Fed Wagyu S Beef Neck Meat MS9+","b":"Shimo","q":139.5,"d":"2026-05-04","u":"kg"},{"c":"SHIC12-22809","n":"B/L Grain-Fed Wagyu S Beef Neck Meat MS9+","b":"Shimo","q":-3.3,"d":"2026-05-04","u":"kg"},{"c":"SHIC12-22809","n":"B/L Grain-Fed Wagyu S Beef Neck Meat MS9+","b":"Shimo","q":-136.2,"d":"2026-05-04","u":"kg"},{"c":"SHIC12-22809","n":"B/L Grain-Fed Wagyu S Beef Neck Meat MS9+","b":"Shimo","q":139.5,"d":"2026-05-04","u":"kg"}]},{"po":"4002900","raw_po":"4002900 (Printed)","label":"260605-MUL2623-2670","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Shimo"],"date":"2026-06-05","items":[{"c":"SHIF12-25602","n":"B/L Wagyu Beef Trimming 65CLBP","b":"Shimo","q":11206.4,"d":"2026-06-05","u":"kg"}]},{"po":"4002901","raw_po":"4002901 (Completed)","label":"260513-MUL2624-2684","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Mulwarra","Kidman","2GR","Shimo","Blackmore","Meredith Dairy"],"date":"2026-05-13","items":[{"c":"MULC11-2090","n":"B/L Grass-Fed Black Angus Beef D Rump","b":"Mulwarra","q":590.35,"d":"2026-05-13","u":"kg"},{"c":"MULC11-23101","n":"B/L Grass-Fed Black Angus Beef Chuck Tender","b":"Mulwarra","q":418.6,"d":"2026-05-13","u":"kg"},{"c":"KIDC12-1604","n":"B/I Grain Fed Wagyu Beef Tomahawk Slab MS2/3","b":"Kidman","q":49.52,"d":"2026-05-13","u":"kg"},{"c":"KIDC12-1552","n":"B/I Grain Fed Wagyu Beef Shortloin MS2/3","b":"Kidman","q":44.28,"d":"2026-05-13","u":"kg"},{"c":"KIDC12-24694","n":"B/L Grain Fed Wagyu Beef Short Rib Meat MS4/5","b":"Kidman","q":39.46,"d":"2026-05-13","u":"kg"},{"c":"KIDC12-2240","n":"B/L Grain Fed Wagyu Beef Rib Eye Roll MS2/3","b":"Kidman","q":107.58,"d":"2026-05-13","u":"kg"},{"c":"KIDC12-2140","n":"B/L Grain Fed Wagyu Beef Striploin MS2/3","b":"Kidman","q":172.6,"d":"2026-05-13","u":"kg"},{"c":"KIDC12-2160","n":"B/L Grain Fed Wagyu Beef Tenderloin MS2/3","b":"Kidman","q":39.82,"d":"2026-05-13","u":"kg"},{"c":"KIDC12-2430","n":"B/L Grain Fed Wagyu Beef Intercostals MS2/3","b":"Kidman","q":50.82,"d":"2026-05-13","u":"kg"},{"c":"KIDC12-2268","n":"B/L Grain Fed Wagyu  Beef Chuck Eye Roll MS2/3","b":"Kidman","q":293.88,"d":"2026-05-13","u":"kg"},{"c":"KIDC12-2266","n":"B/L Grain Fed Wagyu Beef Chuck Tail Flap MS2/3","b":"Kidman","q":115.16,"d":"2026-05-13","u":"kg"},{"c":"KIDC12-2303","n":"B/L Grain Fed Wagyu S Beef Oyster Blade MS2/3","b":"Kidman","q":120.32,"d":"2026-05-13","u":"kg"},{"c":"2GRC12-2142","n":"B/L Grain Fed Wagyu Beef Striploin MS9+","b":"2GR","q":50.08,"d":"2026-05-13","u":"kg"},{"c":"2GRC12-2204","n":"B/L Grain Fed Wagyu S Beef Thick Skirt","b":"2GR","q":125.92,"d":"2026-05-13","u":"kg"},{"c":"2GRC12-23028","n":"B/L Grain Fed Wagyu S Beef Shoulder Tender MS8/9","b":"2GR","q":40.16,"d":"2026-05-13","u":"kg"},{"c":"2GRC12-2302","n":"B/L Grain Fed Wagyu S Beef Shoulder Tender MS9","b":"2GR","q":96.22,"d":"2026-05-13","u":"kg"},{"c":"2GRC12-23109","n":"B/L C Grain Fed Wagyu S Beef Chuck Tender MS9+","b":"2GR","q":48.36,"d":"2026-05-13","u":"kg"},{"c":"2GRC12-22689","n":"B/L Grain Fed Wagyu Beef Chuck Eye Roll MS9+","b":"2GR","q":119.32,"d":"2026-05-13","u":"kg"},{"c":"2GRC12-20859","n":"B/L Grain Fed Wagyu S Beef Rump Cap MS9+","b":"2GR","q":110.82,"d":"2026-05-13","u":"kg"},{"c":"2GRC12-2070","n":"B/L Grain Fed Wagyu S Beef Knuckle MS9+","b":"2GR","q":305.48,"d":"2026-05-13","u":"kg"},{"c":"2GRC12-20009","n":"B/L Grain Fed Wagyu S Beef Topside Cap Off MS9+","b":"2GR","q":48.78,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-2090","n":"B/L Grain Fed Wagyu S Beef D Rump MS6/7","b":"Shimo","q":66.1,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-24656","n":"B/L GF Wagyu Short Rib Meat MS6/7","b":"Shimo","q":41.6,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-22809","n":"B/L Grain-Fed Wagyu S Beef Neck Meat MS9+","b":"Shimo","q":82.7,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-22058","n":"B/L Grain-Fed Wagyu S Beef Inside Skirt MB8/9","b":"Shimo","q":41.3,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-20409","n":"B/L Grain-Fed Wagyu S Beef Eye Round MS9+","b":"Shimo","q":37.2,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-16034","n":"B/I Grain-Fed Wagyu S Beef Tomahawk Portion MB 4/5","b":"Shimo","q":113.7,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-16036","n":"B/I Grain-Fed Wagyu S Beef Tomahawk Portion MB 6","b":"Shimo","q":57.7,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-16044","n":"B/I C Grain Fed Wagyu S Beef Tomahawk Slab MS4/5","b":"Shimo","q":100.4,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-16096","n":"B/I Grain-Fed Wagyu S Beef OP Rib MS6/7","b":"Shimo","q":20.4,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-21604","n":"B/L Grain Fed Wagyu S Beef Tenderloin MB4/5","b":"Shimo","q":251.7,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-21606","n":"B/L Grain-Fed Wagyu S Beef Tenderloin MS6","b":"Shimo","q":257.9,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-21404","n":"B/L Grain-Fed Wagyu S Beef Striploin MB4/5","b":"Shimo","q":255.5,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-21406","n":"B/L Grain-Fed Wagyu S Beef Striploin MB6/7","b":"Shimo","q":34.7,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-21408","n":"B/L GF Wagyu S Beef 3 Rib Striploin MS8/9","b":"Shimo","q":70.8,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-22404","n":"B/L Grain-Fed Wagyu S Beef Cube Roll MB4/5","b":"Shimo","q":223.7,"d":"2026-05-13","u":"kg"},{"c":"SHIC12-22406","n":"B/L Grain-Fed Wagyu S Beef Cube Roll MS6","b":"Shimo","q":71.0,"d":"2026-05-13","u":"kg"},{"c":"BLAC12-21319","n":"B/L Grain-Fed Wagyu S Beef Tri Tip MS9+","b":"Blackmore","q":29.25,"d":"2026-05-13","u":"kg"},{"c":"MERC31-0042","n":"Fresh Goat Cheese with Dill 80g","b":"Meredith Dairy","q":120.0,"d":"2026-05-13","u":"kg"},{"c":"MERC31-0003","n":"Fresh Goat Cheese 80g","b":"Meredith Dairy","q":120.0,"d":"2026-05-13","u":"kg"},{"c":"MERC31-0002","n":"Fresh Goat Cheese 1kg","b":"Meredith Dairy","q":168.0,"d":"2026-05-13","u":"kg"},{"c":"MERC31-0021","n":"Marinated Goat Cheese 320g","b":"Meredith Dairy","q":240.0,"d":"2026-05-13","u":"kg"}]},{"po":"4002903","raw_po":"4002903 (Completed)","label":"260520-MUL2625-2655","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Bachelor","MS2+ Bachelor","AMH White","Riverina","Mulwarra"],"date":"2026-05-20","items":[{"c":"BACC11-2160","n":"B/L Grain-Fed Black Angus YP Beef Tenderloin MS2+","b":"Bachelor","q":412.35,"d":"2026-05-20","u":"kg"},{"c":"BACC11-2140","n":"B/L Grain-Fed Black Angus YP Beef Striploin MS2+","b":"Bachelor","q":519.1,"d":"2026-05-20","u":"kg"},{"c":"BACC11-2240","n":"B/L Grain-Fed Black Angus YP Beef Cube Roll MS2+","b":"Bachelor","q":613.4,"d":"2026-05-20","u":"kg"},{"c":"BACC11-2210","n":"B/L Grain-Fed Black Angus YP Beef Flank Steak MS2+","b":"Bachelor","q":500.55,"d":"2026-05-20","u":"kg"},{"c":"BACC11-2275","n":"B/L Grain-Fed Black Angus YP Beef Chuck Roll MS2+","b":"Bachelor","q":411.7,"d":"2026-05-20","u":"kg"},{"c":"BACC11-2206","n":"B/L Grain Fed Black Angus YP Beef Flap Meat","b":"MS2+ Bachelor","q":208.45,"d":"2026-05-20","u":"kg"},{"c":"BACC12-2303","n":"B/L Grain Fed Black Angus Beef Oyster Blade MS2+","b":"Bachelor","q":151.25,"d":"2026-05-20","u":"kg"},{"c":"BACC11-2085","n":"B/L Grain Fed YP Black Angus Rump Cap MS2+","b":"Bachelor","q":306.8,"d":"2026-05-20","u":"kg"},{"c":"BACC11-16093","n":"B/I Grain Fed YP Angus Beef 7 Rib OP Rib MS3+","b":"Bachelor","q":16.95,"d":"2026-05-20","u":"kg"},{"c":"BACC11-15523","n":"B/I Black Angus YP Beef 1 Rib Shortloin MB3+","b":"Bachelor","q":21.3,"d":"2026-05-20","u":"kg"},{"c":"AMWC11-2240","n":"B/L Grain-Fed PR Beef Rib Cube Roll","b":"AMH White","q":610.0,"d":"2026-05-20","u":"kg"},{"c":"AMWC11-2140","n":"B/L Grain Fed PR Beef Striploin 4kg up","b":"AMH White","q":259.7,"d":"2026-05-20","u":"kg"},{"c":"AMWC11-2210","n":"B/L Grain-Fed S Beef Flank Steak","b":"AMH White","q":359.55,"d":"2026-05-20","u":"kg"},{"c":"AMWC11-2085","n":"B/L Grain Fed PR Beef Rump Cap","b":"AMH White","q":245.45,"d":"2026-05-20","u":"kg"},{"c":"RIVC11-2160","n":"B/L Grain Fed Black Angus Tenderloin MS3+","b":"Riverina","q":204.25,"d":"2026-05-20","u":"kg"},{"c":"RIVC11-2142","n":"B/L Grain Fed Black Angus 1 Rib Striploin MS3+","b":"Riverina","q":311.95,"d":"2026-05-20","u":"kg"},{"c":"RIVC11-2240","n":"B/L Grain Fed Black Angus 7 Rib Cuberoll MS3+","b":"Riverina","q":488.5,"d":"2026-05-20","u":"kg"},{"c":"MULC11-2160","n":"B/L Grass-Fed Black Angus Beef Tenderloin","b":"Mulwarra","q":150.72,"d":"2026-05-20","u":"kg"}]},{"po":"4002905","raw_po":"4002905 (Printed)","label":"260709-MUL26?-2657","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Bachelor","MS2+ Bachelor","AMH White","Riverina"],"date":"2026-07-09","items":[{"c":"BACC11-2160","n":"B/L Grain-Fed Black Angus YP Beef Tenderloin MS2+","b":"Bachelor","q":350.0,"d":"2026-07-09","u":"kg"},{"c":"BACC11-2140","n":"B/L Grain-Fed Black Angus YP Beef Striploin MS2+","b":"Bachelor","q":700.0,"d":"2026-07-09","u":"kg"},{"c":"BACC11-2240","n":"B/L Grain-Fed Black Angus YP Beef Cube Roll MS2+","b":"Bachelor","q":700.0,"d":"2026-07-09","u":"kg"},{"c":"BACC11-2210","n":"B/L Grain-Fed Black Angus YP Beef Flank Steak MS2+","b":"Bachelor","q":800.0,"d":"2026-07-09","u":"kg"},{"c":"BACC11-2275","n":"B/L Grain-Fed Black Angus YP Beef Chuck Roll MS2+","b":"Bachelor","q":450.0,"d":"2026-07-09","u":"kg"},{"c":"BACC11-2206","n":"B/L Grain Fed Black Angus YP Beef Flap Meat","b":"MS2+ Bachelor","q":300.0,"d":"2026-07-09","u":"kg"},{"c":"BACC11-2085","n":"B/L Grain Fed YP Black Angus Rump Cap MS2+","b":"Bachelor","q":150.0,"d":"2026-07-09","u":"kg"},{"c":"BACC12-2303","n":"B/L Grain Fed Black Angus Beef Oyster Blade MS2+","b":"Bachelor","q":300.0,"d":"2026-07-09","u":"kg"},{"c":"AMWC11-2240","n":"B/L Grain-Fed PR Beef Rib Cube Roll","b":"AMH White","q":600.0,"d":"2026-07-09","u":"kg"},{"c":"AMWC11-2140","n":"B/L Grain Fed PR Beef Striploin 4kg up","b":"AMH White","q":350.0,"d":"2026-07-09","u":"kg"},{"c":"AMWC11-2210","n":"B/L Grain-Fed S Beef Flank Steak","b":"AMH White","q":350.0,"d":"2026-07-09","u":"kg"},{"c":"AMWC11-2085","n":"B/L Grain Fed PR Beef Rump Cap","b":"AMH White","q":350.0,"d":"2026-07-09","u":"kg"},{"c":"RIVC11-2160","n":"B/L Grain Fed Black Angus Tenderloin MS3+","b":"Riverina","q":150.0,"d":"2026-07-09","u":"kg"},{"c":"RIVC11-2142","n":"B/L Grain Fed Black Angus 1 Rib Striploin MS3+","b":"Riverina","q":300.0,"d":"2026-07-09","u":"kg"},{"c":"RIVC11-2240","n":"B/L Grain Fed Black Angus 7 Rib Cuberoll MS3+","b":"Riverina","q":500.0,"d":"2026-07-09","u":"kg"}]},{"po":"4002907","raw_po":"4002907 (Free)","label":"260626-CIAO2602-370","creditor":"COMPAGNIA MERCANTILE D’OLTREMARE SRL, --","brands":["Ciao"],"date":"2026-06-26","items":[{"c":"CIAD65-0002","n":"Whole Peeled Tomatoes 2500g","b":"Ciao","q":6900.0,"d":"2026-06-26","u":"kg"},{"c":"CIAD65-0011","n":"Peeled Tomatoes SAN MARZANO DOP 2500g","b":"Ciao","q":600.0,"d":"2026-06-26","u":"kg"}]},{"po":"4002939","raw_po":"4002939 (Completed)","label":"260507-CAS2601","creditor":"CASALASCO SOCIETA AGRICOLA SPA, --","brands":["Pomi"],"date":"2026-05-07","items":[{"c":"POMD64-0001","n":"Tomato paste 200g","b":"Pomi","q":2520.0,"d":"2026-05-07","u":"kg"},{"c":"POMD64-0002","n":"Chopped Tomatoes 500g","b":"Pomi","q":3168.0,"d":"2026-05-07","u":"kg"},{"c":"POMD64-0003","n":"Strained Tomatoes 200g","b":"Pomi","q":6528.0,"d":"2026-05-07","u":"kg"}]},{"po":"4002949","raw_po":"4002949 (Completed)","label":"260511-MUL2622-2752","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Tasmanian","Casino"],"date":"2026-05-11","items":[{"c":"TASF22-0001","n":"Wild Greenlip Abalone Meat 90-150g","b":"Tasmanian","q":100.19,"d":"2026-05-11","u":"kg"},{"c":"TASF22-0002","n":"Wild Greenlip Abalone Meat 150-225g","b":"Tasmanian","q":100.6,"d":"2026-05-11","u":"kg"},{"c":"TASF22-0003","n":"Wild Greenlip Abalone Meat 225-300g","b":"Tasmanian","q":101.01,"d":"2026-05-11","u":"kg"},{"c":"TASF22-0004","n":"Wild Greenlip Abalone 300-375g","b":"Tasmanian","q":45.62,"d":"2026-05-11","u":"kg"},{"c":"TASF22-0005","n":"Wild Greenlip Abalone 375g+","b":"Tasmanian","q":15.05,"d":"2026-05-11","u":"kg"},{"c":"CASF12-6060","n":"B/L Grain-Fed Wagyu S Beef Cheeks","b":"Casino","q":653.72,"d":"2026-05-11","u":"kg"},{"c":"CASF12-6060","n":"B/L Grain-Fed Wagyu S Beef Cheeks","b":"Casino","q":-653.72,"d":"2026-05-11","u":"kg"},{"c":"CASF11-6060","n":"B/L Grass Fed A Beef Cheeks","b":"Casino","q":653.72,"d":"2026-05-11","u":"kg"}]},{"po":"4002975","raw_po":"4002975 (Completed)","label":"260504-PAC-SG","creditor":"PHAT TRIEN HAU DAI DUONG, --","brands":["Pacific Oyster"],"date":"2026-05-04","items":[{"c":"PACC23-0004","n":"Fine De Claire Oyster 10/13 pcs kg","b":"Pacific Oyster","q":150.0,"d":"2026-05-04","u":"pc"}]},{"po":"4002976","raw_po":"4002976 (Completed)","label":"260504-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-04","items":[{"c":"VTDC42-0021","n":"Pasteurized Egg Yolk 1l","b":"VTD","q":10.0,"d":"2026-05-04","u":"pc"},{"c":"VTDC42-0011","n":"Pasteurized Egg White 1l","b":"VTD","q":21.0,"d":"2026-05-04","u":"pc"}]},{"po":"4002979","raw_po":"4002979 (Completed)","label":"260506-PAC-SG","creditor":"PHAT TRIEN HAU DAI DUONG, --","brands":["Pacific Oyster"],"date":"2026-05-06","items":[{"c":"PACC23-0004","n":"Fine De Claire Oyster 10/13 pcs kg","b":"Pacific Oyster","q":200.0,"d":"2026-05-06","u":"pc"}]},{"po":"4002980","raw_po":"4002980 (Completed)","label":"260508-PAC-SG","creditor":"PHAT TRIEN HAU DAI DUONG, --","brands":["Pacific Oyster"],"date":"2026-05-08","items":[{"c":"PACC23-0004","n":"Fine De Claire Oyster 10/13 pcs kg","b":"Pacific Oyster","q":150.0,"d":"2026-05-08","u":"pc"}]},{"po":"4002981","raw_po":"4002981 (Printed)","label":"260707-ALN 2030","creditor":"ALTOTHEA LIMITED","brands":["ANB"],"date":"2026-07-07","items":[{"c":"ANBC11-2304","n":"B/L Grain Fed Black Angus Beef Flat Iron Steak","b":"ANB","q":300.0,"d":"2026-07-07","u":"kg"},{"c":"ANBC11-2241","n":"B/L Black Angus Beef Ribeye (Half Pack)","b":"ANB","q":100.0,"d":"2026-07-07","u":"kg"},{"c":"ANBC11-2240","n":"B/L Black Angus Beef Ribeye 2.5kg up","b":"ANB","q":700.0,"d":"2026-07-07","u":"kg"},{"c":"ANBC11-2210","n":"B/L Grain-Fed Black Angus Beef Flank Steak","b":"ANB","q":100.0,"d":"2026-07-07","u":"kg"},{"c":"ANBC11-2206","n":"B/L Grain Fed  Black Angus Beef Flap Meat","b":"ANB","q":160.0,"d":"2026-07-07","u":"kg"},{"c":"ANBC11-2204","n":"B/L Grain-Fed Beef Thick Skirt","b":"ANB","q":140.0,"d":"2026-07-07","u":"kg"},{"c":"ANBC11-2190","n":"B/L Grain-Fed Beef Thin Skirt","b":"ANB","q":200.0,"d":"2026-07-07","u":"kg"},{"c":"ANBC11-2160","n":"B/L Black Angus Beef Tenderloin 1.8kg up","b":"ANB","q":700.0,"d":"2026-07-07","u":"kg"},{"c":"ANBC11-21401","n":"B/L Black Angus Beef 1 Rib Striploin 1kg","b":"ANB","q":50.0,"d":"2026-07-07","u":"kg"},{"c":"ANBC11-2140","n":"B/L Black Angus Beef 1 Rib Striploin 4kg up","b":"ANB","q":240.0,"d":"2026-07-07","u":"kg"}]},{"po":"4002982","raw_po":"4002982 (Completed)","label":"260506-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-06","items":[{"c":"VTDC42-0021","n":"Pasteurized Egg Yolk 1l","b":"VTD","q":10.0,"d":"2026-05-06","u":"pc"},{"c":"VTDC42-0011","n":"Pasteurized Egg White 1l","b":"VTD","q":3.0,"d":"2026-05-06","u":"pc"}]},{"po":"4002983","raw_po":"4002983 (Completed)","label":"260514-AUS-SG","creditor":"THUY SAN AUSTRALIS VIET NAM","brands":["Better Fish"],"date":"2026-05-13","items":[{"c":"BETF21-0005","n":"Barramundi Center Cut Portion 100-120gr","b":"Better Fish","q":49.94,"d":"2026-05-13","u":"kg"},{"c":"BETF21-0017","n":"Barramundi Fillet 200-350g","b":"Better Fish","q":953.4,"d":"2026-05-13","u":"kg"}]},{"po":"4002984","raw_po":"4002984 (Printed)","label":"260601-AUS-SG","creditor":"THUY SAN AUSTRALIS VIET NAM","brands":["Better Fish"],"date":"2026-06-01","items":[{"c":"BETF21-0002","n":"Barramundi HOGG 1.1kg","b":"Better Fish","q":203.0,"d":"2026-06-01","u":"kg"},{"c":"BETF21-0017","n":"Barramundi Fillet 200-350g","b":"Better Fish","q":454.0,"d":"2026-06-01","u":"kg"}]},{"po":"4002986","raw_po":"4002986 (Completed)","label":"260511-CEB-SG","creditor":"THUC PHAM CEBON, Ha","brands":["Cebon"],"date":"2026-05-11","items":[{"c":"CEBF16-0001","n":"Duck Breast 300g+","b":"Cebon","q":118.1,"d":"2026-05-11","u":"kg"},{"c":"CEBF16-0011","n":"Duck Leg 300g+","b":"Cebon","q":35.7,"d":"2026-05-11","u":"kg"},{"c":"CEBF16-0041","n":"Duck Fat 500g","b":"Cebon","q":11.9,"d":"2026-05-11","u":"kg"},{"c":"CEBF16-0001","n":"Duck Breast 300g+","b":"Cebon","q":0.3,"d":"2026-05-11","u":"kg"}]},{"po":"4002988","raw_po":"4002988 (Printed)","label":"260519-MUL26?-?","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Glacier"],"date":"2026-05-19","items":[{"c":"GLAF21-0001","n":"B/L Patagonian Toothfish Fillet 600g-2kg","b":"Glacier","q":130.0,"d":"2026-05-19","u":"kg"},{"c":"GLAF21-0011","n":"B/L Patagonian Toothfish Portion 150g","b":"Glacier","q":432.0,"d":"2026-05-19","u":"kg"}]},{"po":"4002989","raw_po":"4002989 (Completed)","label":"260518-GRO-2602","creditor":"GREATER OMAHA PACKING CO., INC, --","brands":["Greater Omaha"],"date":"2026-05-18","items":[{"c":"GROF11-2140","n":"B/L F Prime Beef Loin Striploin (Half pack)","b":"Greater Omaha","q":105.46,"d":"2026-05-18","u":"kg"},{"c":"GROF11-2353","n":"B/L Prime Beef Brisket","b":"Greater Omaha","q":175.45,"d":"2026-05-18","u":"kg"},{"c":"GROF11-2160","n":"B/L Prime Beef Loin Tenderloin Peeled","b":"Greater Omaha","q":229.02,"d":"2026-05-18","u":"kg"},{"c":"GROF11-2240","n":"B/L F Prime Beef Ribeye Lip on (Half pack)","b":"Greater Omaha","q":948.79,"d":"2026-05-18","u":"kg"}]},{"po":"4002990","raw_po":"4002990 (Completed)","label":"260518-MNV2601","creditor":"MINERVA S.A., --","brands":["Pul"],"date":"2026-05-18","items":[{"c":"PULC11-2160","n":"B/L Grass Fed Beef Tenderloin Chain off (1,8kg up)","b":"Pul","q":1287.56,"d":"2026-05-18","u":"kg"},{"c":"PULC11-2140","n":"B/L Grass Fed Beef Striploin UK Trim (4kg up)","b":"Pul","q":15.42,"d":"2026-05-18","u":"kg"},{"c":"PULC11-2240","n":"B/L Grass Fed Beef Cube Roll Cap Off Chain Off","b":"Pul","q":14.95,"d":"2026-05-18","u":"kg"}]},{"po":"4002992","raw_po":"4002992 (Printed)","label":"260508-MAR-SG","creditor":"XUAT NHAP KHAU HAI SAN MARINE TRIDENT, --","brands":["Marine Farm"],"date":"2026-05-08","items":[{"c":"MAFF21-0002","n":"Salmon Dice Cut Cube (Poke)","b":"Marine Farm","q":294.5,"d":"2026-05-08","u":"kg"}]},{"po":"4002993","raw_po":"4002993 (Printed)","label":"260605-CUTB-SG","creditor":"CUTHBERTS VIET NAM, --, 0837070993","brands":["Bonsoy"],"date":"2026-06-05","items":[{"c":"BOSD75-0002","n":"Sparkling Coconut Water Lychee","b":"Bonsoy","q":10800.0,"d":"2026-06-05","u":"pc"},{"c":"BOSD75-0003","n":"Sparkling Coconut Water Passion Fruit","b":"Bonsoy","q":10800.0,"d":"2026-06-05","u":"pc"},{"c":"BOSD75-0001","n":"Sparkling coconut water","b":"Bonsoy","q":7200.0,"d":"2026-06-05","u":"pc"}]},{"po":"4002994","raw_po":"4002994 (Completed)","label":"260507-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-07","items":[{"c":"VTDC42-0021","n":"Pasteurized Egg Yolk 1l","b":"VTD","q":22.0,"d":"2026-05-07","u":"pc"}]},{"po":"4002997","raw_po":"4002997 (Printed)","label":"Marea · Crab","creditor":"PHILLIPS FOODS INTERNATIONAL (HONGKONG) LIMITED, --, +(852) 25292514","brands":["Marea"],"date":"2026-07-10","items":[{"c":"MREC23-0011","n":"Pasteurized Claw Crab Meat 454g","b":"Marea","q":8000.0,"d":"2026-07-10","u":"kg"},{"c":"MREC23-0001","n":"Pasteurized Jumbo Lump Crab Meat 454g","b":"Marea","q":1900.0,"d":"2026-07-10","u":"kg"},{"c":"MREC23-0021","n":"Pasteurized Super Lump Crab Meat 454g","b":"Marea","q":4200.0,"d":"2026-07-10","u":"kg"}]},{"po":"4002998","raw_po":"4002998 (Completed)","label":"260508-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-08","items":[{"c":"VTDC42-0021","n":"Pasteurized Egg Yolk 1l","b":"VTD","q":25.0,"d":"2026-05-08","u":"pc"},{"c":"VTDC42-0011","n":"Pasteurized Egg White 1l","b":"VTD","q":7.0,"d":"2026-05-08","u":"pc"},{"c":"VTDC42-0001","n":"Pasteurized Whole Egg 1l","b":"VTD","q":5.0,"d":"2026-05-08","u":"pc"}]},{"po":"4003000","raw_po":"4003000 (Completed)","label":"260509-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-09","items":[{"c":"VTDC42-0011","n":"Pasteurized Egg White 1l","b":"VTD","q":12.0,"d":"2026-05-09","u":"pc"}]},{"po":"4003002","raw_po":"4003002 (Completed)","label":"260511-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-11","items":[{"c":"VTDC42-0011","n":"Pasteurized Egg White 1l","b":"VTD","q":10.0,"d":"2026-05-11","u":"pc"},{"c":"VTDC42-0021","n":"Pasteurized Egg Yolk 1l","b":"VTD","q":9.0,"d":"2026-05-11","u":"pc"}]},{"po":"4003005","raw_po":"4003005 (Printed)","label":"260529-GRO2603","creditor":"GREATER OMAHA PACKING CO., INC, --","brands":["Greater Omaha"],"date":"2026-05-29","items":[{"c":"GROC11-2240","n":"B/L Prime Beef Ribeye Lip on (Half pack)","b":"Greater Omaha","q":610.32,"d":"2026-05-29","u":"kg"},{"c":"GROC11-2142","n":"B/L Prime Beef Loin Striploin (Half Pack)","b":"Greater Omaha","q":452.55,"d":"2026-05-29","u":"kg"},{"c":"GROC11-2160","n":"B/L Prime Beef Loin Tenderloin  (Half Pack)","b":"Greater Omaha","q":342.89,"d":"2026-05-29","u":"kg"}]},{"po":"4003006","raw_po":"4003006 (Completed)","label":"260513-PAC-SG","creditor":"PHAT TRIEN HAU DAI DUONG, --","brands":["Pacific Oyster"],"date":"2026-05-13","items":[{"c":"PACC23-0004","n":"Fine De Claire Oyster 10/13 pcs kg","b":"Pacific Oyster","q":200.0,"d":"2026-05-13","u":"pc"}]},{"po":"4003007","raw_po":"4003007 (Completed)","label":"260512-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-12","items":[{"c":"VTDC42-0021","n":"Pasteurized Egg Yolk 1l","b":"VTD","q":10.0,"d":"2026-05-12","u":"pc"},{"c":"VTDC42-0011","n":"Pasteurized Egg White 1l","b":"VTD","q":10.0,"d":"2026-05-12","u":"pc"}]},{"po":"4003008","raw_po":"4003008 (Completed)","label":"260512-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-13","items":[{"c":"VTDC42-0021","n":"Pasteurized Egg Yolk 1l","b":"VTD","q":1.0,"d":"2026-05-13","u":"pc"}]},{"po":"4003009","raw_po":"4003009 (Completed)","label":"260513-ANN-SG","creditor":"THUC PHAM AN NAM, Ai","brands":["Epicurious"],"date":"2026-05-13","items":[{"c":"EPIF17-0005","n":"Italian Sausages 450g","b":"Epicurious","q":50.0,"d":"2026-05-13","u":"kg"},{"c":"EPIF17-0005","n":"Italian Sausages 450g","b":"Epicurious","q":0.4,"d":"2026-05-13","u":"kg"}]},{"po":"4003010","raw_po":"4003010 (Completed)","label":"260516-ANN-SG","creditor":"THUC PHAM AN NAM, Ai","brands":["Epicurious"],"date":"2026-05-16","items":[{"c":"EPIF17-0005","n":"Italian Sausages 450g","b":"Epicurious","q":50.0,"d":"2026-05-16","u":"kg"},{"c":"EPIF17-0005","n":"Italian Sausages 450g","b":"Epicurious","q":0.32,"d":"2026-05-16","u":"kg"}]},{"po":"4003011","raw_po":"4003011 (Completed)","label":"260515-PAC-SG","creditor":"PHAT TRIEN HAU DAI DUONG, --","brands":["Pacific Oyster"],"date":"2026-05-15","items":[{"c":"PACC23-0004","n":"Fine De Claire Oyster 10/13 pcs kg","b":"Pacific Oyster","q":200.0,"d":"2026-05-15","u":"pc"}]},{"po":"4003013","raw_po":"4003013 (Completed)","label":"260514-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-14","items":[{"c":"VTDC42-0011","n":"Pasteurized Egg White 1l","b":"VTD","q":10.0,"d":"2026-05-14","u":"pc"}]},{"po":"4003015","raw_po":"4003015 (Printed)","label":"260529-DTV-SG","creditor":"DAI TAN VIET, --","brands":["Friboi"],"date":"2026-05-29","items":[{"c":"FRIF11-2303","n":"B/L Grain Fed Beef Oyster Blade","b":"Friboi","q":1000.0,"d":"2026-05-29","u":"kg"}]},{"po":"4003016","raw_po":"4003016 (Completed)","label":"260515-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-15","items":[{"c":"VTDC42-0021","n":"Pasteurized Egg Yolk 1l","b":"VTD","q":40.0,"d":"2026-05-15","u":"pc"},{"c":"VTDC42-0011","n":"Pasteurized Egg White 1l","b":"VTD","q":43.0,"d":"2026-05-15","u":"pc"}]},{"po":"4003018","raw_po":"4003018 (Completed)","label":"260518-CEB-SG","creditor":"THUC PHAM CEBON, Ha","brands":["Cebon"],"date":"2026-05-18","items":[{"c":"CEBF16-0001","n":"Duck Breast 300g+","b":"Cebon","q":92.5,"d":"2026-05-18","u":"kg"},{"c":"CEBF16-0011","n":"Duck Leg 300g+","b":"Cebon","q":53.5,"d":"2026-05-18","u":"kg"},{"c":"CEBF16-0002","n":"Bone in Duck Breast","b":"Cebon","q":31.5,"d":"2026-05-18","u":"kg"},{"c":"CEBF17-0001","n":"Merguez 500g","b":"Cebon","q":58.8,"d":"2026-05-18","u":"kg"},{"c":"CEBF16-0001","n":"Duck Breast 300g+","b":"Cebon","q":1.1,"d":"2026-05-18","u":"kg"},{"c":"CEBF17-0001","n":"Merguez 500g","b":"Cebon","q":11.3,"d":"2026-05-18","u":"kg"}]},{"po":"4003020","raw_po":"4003020 (Printed)","label":"260530-MUL2628-2852","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Darling Down","Mulwarra","Shimo"],"date":"2026-05-30","items":[{"c":"DADC12-2140","n":"B/L Grain Fed Wagyu Beef Striploin MS4/5","b":"Darling Down","q":342.3,"d":"2026-05-30","u":"kg"},{"c":"DADC12-2240","n":"B/L Grain Fed Wagyu Beef Cube Roll MS4/5","b":"Darling Down","q":171.95,"d":"2026-05-30","u":"kg"},{"c":"DADC12-2210","n":"B/LGrain Fed Wagyu Beef Flank steak MS4/5","b":"Darling Down","q":167.75,"d":"2026-05-30","u":"kg"},{"c":"DADC12-2085","n":"B/L Grain Fed Wagyu Beef Rump Cap MS4/5","b":"Darling Down","q":115.7,"d":"2026-05-30","u":"kg"},{"c":"MULC11-2140","n":"B/L Grass-Fed Black Angus Beef Striploin","b":"Mulwarra","q":110.72,"d":"2026-05-30","u":"kg"},{"c":"MULC11-2240","n":"B/L Grass-Fed Black Angus Beef Cube Roll","b":"Mulwarra","q":90.9,"d":"2026-05-30","u":"kg"},{"c":"MULC11-2210","n":"B/L Grass-Fed Black Angus Beef Flank Steak","b":"Mulwarra","q":80.74,"d":"2026-05-30","u":"kg"},{"c":"SHIC12-22067","n":"B/L Grain-Fed Wagyu S Beef Flap Meat MS7/8","b":"Shimo","q":172.7,"d":"2026-05-30","u":"kg"},{"c":"SHIC12-22076","n":"B/L Grain-Fed Wagyu S Beef Flank Steak MB6/7","b":"Shimo","q":149.6,"d":"2026-05-30","u":"kg"},{"c":"SHIC12-22058","n":"B/L Grain-Fed Wagyu S Beef Inside Skirt MB8/9","b":"Shimo","q":62.0,"d":"2026-05-30","u":"kg"}]},{"po":"4003021","raw_po":"4003021 (Completed)","label":"260516-CEB-SG","creditor":"THUC PHAM CEBON, Ha","brands":["Cebon"],"date":"2026-05-16","items":[{"c":"CEBF16-0011","n":"Duck Leg 300g+","b":"Cebon","q":28.3,"d":"2026-05-16","u":"kg"},{"c":"CEBF16-0001","n":"Duck Breast 300g+","b":"Cebon","q":120.3,"d":"2026-05-16","u":"kg"},{"c":"CEBF17-0001","n":"Merguez 500g","b":"Cebon","q":10.08,"d":"2026-05-16","u":"kg"},{"c":"CEBF16-0041","n":"Duck Fat 500g","b":"Cebon","q":13.0,"d":"2026-05-16","u":"kg"},{"c":"CEBF17-0001","n":"Merguez 500g","b":"Cebon","q":-10.08,"d":"2026-05-16","u":"kg"},{"c":"CEBF17-0001","n":"Merguez 500g","b":"Cebon","q":10.0,"d":"2026-05-16","u":"kg"}]},{"po":"4003022","raw_po":"4003022 (Completed)","label":"260516-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-16","items":[{"c":"VTDC42-0021","n":"Pasteurized Egg Yolk 1l","b":"VTD","q":18.0,"d":"2026-05-16","u":"pc"},{"c":"VTDC42-0011","n":"Pasteurized Egg White 1l","b":"VTD","q":2.0,"d":"2026-05-16","u":"pc"}]},{"po":"4003023","raw_po":"4003023 (Completed)","label":"260518-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-18","items":[{"c":"VTDC42-0021","n":"Pasteurized Egg Yolk 1l","b":"VTD","q":10.0,"d":"2026-05-18","u":"pc"},{"c":"VTDC42-0011","n":"Pasteurized Egg White 1l","b":"VTD","q":10.0,"d":"2026-05-18","u":"pc"}]},{"po":"4003026","raw_po":"4003026 (Completed)","label":"260518-ALP","creditor":"THE ALASKA PRIME, --","brands":["North Delta Seafoods"],"date":"2026-05-18","items":[{"c":"NDSF21-0001","n":"B/I Sable FIsh HOGG 1.8-2.2kg","b":"North Delta Seafoods","q":45.36,"d":"2026-05-18","u":"kg"}]},{"po":"4003030","raw_po":"4003030 (Completed)","label":"260519-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-19","items":[{"c":"VTDC42-0021","n":"Pasteurized Egg Yolk 1l","b":"VTD","q":20.0,"d":"2026-05-19","u":"pc"},{"c":"VTDC42-0011","n":"Pasteurized Egg White 1l","b":"VTD","q":3.0,"d":"2026-05-19","u":"pc"}]},{"po":"4003031","raw_po":"4003031 (Completed)","label":"260520-PAC-SG","creditor":"PHAT TRIEN HAU DAI DUONG, --","brands":["Pacific Oyster"],"date":"2026-05-20","items":[{"c":"PACC23-0004","n":"Fine De Claire Oyster 10/13 pcs kg","b":"Pacific Oyster","q":300.0,"d":"2026-05-20","u":"pc"}]},{"po":"4003032","raw_po":"4003032 (Printed)","label":"260522-PAC-SG","creditor":"PHAT TRIEN HAU DAI DUONG, --","brands":["Pacific Oyster"],"date":"2026-05-22","items":[{"c":"PACC23-0004","n":"Fine De Claire Oyster 10/13 pcs kg","b":"Pacific Oyster","q":210.0,"d":"2026-05-22","u":"pc"}]},{"po":"4003034","raw_po":"4003034 (Printed)","label":"260527-MUL2626-2853","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Bachelor","MS2+ Bachelor"],"date":"2026-05-27","items":[{"c":"BACC11-21403","n":"B/L Grain-Fed Black Angus YP Beef Striploin MS3+","b":"Bachelor","q":252.95,"d":"2026-05-27","u":"kg"},{"c":"BACC11-22403","n":"B/L Grain-Fed Black Angus YP Beef Cube Roll MS3+","b":"Bachelor","q":565.3,"d":"2026-05-27","u":"kg"},{"c":"BACC11-2210","n":"B/L Grain-Fed Black Angus YP Beef Flank Steak MS2+","b":"Bachelor","q":150.8,"d":"2026-05-27","u":"kg"},{"c":"BACC11-2206","n":"B/L Grain Fed Black Angus YP Beef Flap Meat","b":"MS2+ Bachelor","q":160.7,"d":"2026-05-27","u":"kg"}]},{"po":"4003035","raw_po":"4003035 (Printed)","label":"260526-MUL#2716","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Kidman","2GR","Shimo","South West Octopus","Antoniou","Marrunga Marble","Blackmore","P J Meat","Tasmanian","Mulwarra","Northern River","Casino"],"date":"2026-05-26","items":[{"c":"KIDF12-0001","n":"B/L Grain Fed Wagyu Beef Burger 150g IW Thermo","b":"Kidman","q":892.8,"d":"2026-05-26","u":"kg"},{"c":"KIDF12-0003","n":"B/L Grain Fed Wagyu Beef Burger 60g","b":"Kidman","q":483.84,"d":"2026-05-26","u":"kg"},{"c":"KIDF12-23532","n":"B/L Grain Fed Wagyu Beef PEDO Brisket MS2/3","b":"Kidman","q":559.12,"d":"2026-05-26","u":"kg"},{"c":"KIDF12-2268","n":"B/L F Grain Fed Wagyu Beef Chuck Eye Roll MS2/3","b":"Kidman","q":342.6,"d":"2026-05-26","u":"kg"},{"c":"2GRF12-23536","n":"B/L Grain Fed Wagyu Beef PEDO Brisket MS6/7","b":"2GR","q":925.92,"d":"2026-05-26","u":"kg"},{"c":"2GRF12-23538","n":"B/L Grain Fed Wagyu S Beef PEDO Brisket MS8/9","b":"2GR","q":248.3,"d":"2026-05-26","u":"kg"},{"c":"2GRF12-23539","n":"B/L Grain Fed Wagyu beef PEDO Brisket MS9+","b":"2GR","q":1252.0,"d":"2026-05-26","u":"kg"},{"c":"2GRF12-22104","n":"B/L Grain Fed Wagyu S Beef Flank Steak MS4/5","b":"2GR","q":120.68,"d":"2026-05-26","u":"kg"},{"c":"2GRF12-22106","n":"B/L Grain Fed Wagyu S Beef Flank Steak MS6/7","b":"2GR","q":143.9,"d":"2026-05-26","u":"kg"},{"c":"2GRF12-22109","n":"B/L Grain Fed Wagyu S Beef Flank Steak MS9+","b":"2GR","q":251.12,"d":"2026-05-26","u":"kg"},{"c":"2GRF12-2430","n":"B/L Grain Fed Wagyu S Beef Intercostal MS8/9","b":"2GR","q":287.6,"d":"2026-05-26","u":"kg"},{"c":"2GRF12-24309","n":"B/L Grain Fed Wagyu S Beef Intercostal MS9+","b":"2GR","q":926.5,"d":"2026-05-26","u":"kg"},{"c":"SHIF12-16034","n":"B/I Grain-Fed Wagyu S Beef Tomahawk Portion M4/5","b":"Shimo","q":194.1,"d":"2026-05-26","u":"kg"},{"c":"SHIF12-6060","n":"B/L Grain - Fed Wagyu Beef Cheeks","b":"Shimo","q":1358.15,"d":"2026-05-26","u":"kg"},{"c":"SWOF22-0003","n":"Octopus Tentacle 1kg","b":"South West Octopus","q":624.0,"d":"2026-05-26","u":"pc"},{"c":"ANTF41-0001","n":"Fillo Pastry Sheet 375g","b":"Antoniou","q":825.0,"d":"2026-05-26","u":"pc"},{"c":"MARF13-4881","n":"B/I Lamb Shortloin Sadlle (Barnsley Chop)","b":"Marrunga Marble","q":301.65,"d":"2026-05-26","u":"kg"},{"c":"MARF13-5015","n":"B/I Lamb Spare Ribs","b":"Marrunga Marble","q":1004.28,"d":"2026-05-26","u":"kg"},{"c":"MARF13-5030","n":"B/I Lamb Foreshank","b":"Marrunga Marble","q":1326.98,"d":"2026-05-26","u":"kg"},{"c":"MARF13-48202","n":"B/L Lamb Leg (Chump Off Shank Off Netted)","b":"Marrunga Marble","q":102.73,"d":"2026-05-26","u":"kg"},{"c":"MARF13-2560","n":"B/L Lamb Trimmings 70CL 5kg","b":"Marrunga Marble","q":719.02,"d":"2026-05-26","u":"kg"},{"c":"MARF13-4756","n":"B/I Lamb Rack (frenched cap on)","b":"Marrunga Marble","q":600.98,"d":"2026-05-26","u":"kg"},{"c":"MARF13-2085","n":"B/L Lamb Chump/Rump (cap on)","b":"Marrunga Marble","q":390.78,"d":"2026-05-26","u":"kg"},{"c":"MARF13-5050","n":"B/L Lamb Shoulder (netted)","b":"Marrunga Marble","q":499.52,"d":"2026-05-26","u":"kg"},{"c":"MARF13-5082","n":"B/L Lamb Tenderloin","b":"Marrunga Marble","q":40.0,"d":"2026-05-26","u":"kg"},{"c":"MARF13-5011","n":"B/L Lamb Flap","b":"Marrunga Marble","q":1000.0,"d":"2026-05-26","u":"kg"},{"c":"BLAF12-25619","n":"B/L Grain-Fed Wagyu S Beef Trim 75CL BP","b":"Blackmore","q":500.0,"d":"2026-05-26","u":"kg"},{"c":"PJMF13-4764","n":"B/I Lamb Rack (frenched cap off) 600g up","b":"P J Meat","q":806.42,"d":"2026-05-26","u":"kg"},{"c":"TASF22-0001","n":"Wild Greenlip Abalone Meat 90-150g","b":"Tasmanian","q":200.01,"d":"2026-05-26","u":"kg"},{"c":"TASF22-0002","n":"Wild Greenlip Abalone Meat 150-225g","b":"Tasmanian","q":200.72,"d":"2026-05-26","u":"kg"},{"c":"TASF22-0003","n":"Wild Greenlip Abalone Meat 225-300g","b":"Tasmanian","q":200.37,"d":"2026-05-26","u":"kg"},{"c":"MULF14-3630","n":"B/I Veal Hindshank Centre Cut 1.3-1.8kg","b":"Mulwarra","q":277.81,"d":"2026-05-26","u":"kg"},{"c":"MULF14-3770","n":"B/L Veal Tenderloin (side strap on) 800-1200g","b":"Mulwarra","q":90.12,"d":"2026-05-26","u":"kg"},{"c":"MULF11-2303","n":"B/L Grain-Fed S Beef Oyster Blade","b":"Mulwarra","q":1009.75,"d":"2026-05-26","u":"kg"},{"c":"MULF11-2464","n":"B/I Grain-Fed S Black Angus Beef Short Ribs","b":"Mulwarra","q":542.11,"d":"2026-05-26","u":"kg"},{"c":"MULF11-16032","n":"B/I Grain Fed S BA Beef Tomahawk Portion","b":"Mulwarra","q":303.6,"d":"2026-05-26","u":"kg"},{"c":"NORF11-2353","n":"B/L Grain Fed S Beef PEDO Brisket","b":"Northern River","q":2011.97,"d":"2026-05-26","u":"kg"},{"c":"NORF11-1631","n":"B/I Grain Fed S Beef Chuck Short Rib","b":"Northern River","q":475.6,"d":"2026-05-26","u":"kg"},{"c":"CASF12-6060","n":"B/L Grain-Fed Wagyu S Beef Cheeks","b":"Casino","q":1000.2,"d":"2026-05-26","u":"kg"},{"c":"CASF14-6110","n":"Veal Sweetbreads","b":"Casino","q":181.82,"d":"2026-05-26","u":"kg"}]},{"po":"4003036","raw_po":"4003036 (Free)","label":"260603-MUL#2773","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Shimo","Mulwarra","Blackmore","Kidman","2GR"],"date":"2026-05-19","items":[{"c":"SHIC12-24656","n":"B/L GF Wagyu Short Rib Meat MS6/7","b":"Shimo","q":60.0,"d":"2026-05-19","u":"kg"},{"c":"SHIC12-20409","n":"B/L Grain-Fed Wagyu S Beef Eye Round MS9+","b":"Shimo","q":150.0,"d":"2026-05-19","u":"kg"},{"c":"SHIC12-23609","n":"B/L Grain-Fed Wagyu S Beef Shin Shank MS9+","b":"Shimo","q":60.0,"d":"2026-05-19","u":"kg"},{"c":"SHIC12-16034","n":"B/I Grain-Fed Wagyu S Beef Tomahawk Portion MB 4/5","b":"Shimo","q":120.0,"d":"2026-05-19","u":"kg"},{"c":"SHIC12-16036","n":"B/I Grain-Fed Wagyu S Beef Tomahawk Portion MB 6","b":"Shimo","q":60.0,"d":"2026-05-19","u":"kg"},{"c":"SHIC12-16044","n":"B/I C Grain Fed Wagyu S Beef Tomahawk Slab MS4/5","b":"Shimo","q":80.0,"d":"2026-05-19","u":"kg"},{"c":"SHIC12-16096","n":"B/I Grain-Fed Wagyu S Beef OP Rib MS6/7","b":"Shimo","q":20.0,"d":"2026-05-19","u":"kg"},{"c":"SHIC12-21604","n":"B/L Grain Fed Wagyu S Beef Tenderloin MB4/5","b":"Shimo","q":250.0,"d":"2026-05-19","u":"kg"},{"c":"SHIC12-21606","n":"B/L Grain-Fed Wagyu S Beef Tenderloin MS6","b":"Shimo","q":250.0,"d":"2026-05-19","u":"kg"},{"c":"SHIC12-21404","n":"B/L Grain-Fed Wagyu S Beef Striploin MB4/5","b":"Shimo","q":200.0,"d":"2026-05-19","u":"kg"},{"c":"SHIC12-21408","n":"B/L GF Wagyu S Beef 3 Rib Striploin MS8/9","b":"Shimo","q":60.0,"d":"2026-05-19","u":"kg"},{"c":"SHIC12-22404","n":"B/L Grain-Fed Wagyu S Beef Cube Roll MB4/5","b":"Shimo","q":160.0,"d":"2026-05-19","u":"kg"},{"c":"SHIC12-22406","n":"B/L Grain-Fed Wagyu S Beef Cube Roll MS6","b":"Shimo","q":60.0,"d":"2026-05-19","u":"kg"},{"c":"MULC11-2090","n":"B/L Grass-Fed Black Angus Beef D Rump","b":"Mulwarra","q":700.0,"d":"2026-05-19","u":"kg"},{"c":"MULC11-23101","n":"B/L Grass-Fed Black Angus Beef Chuck Tender","b":"Mulwarra","q":500.0,"d":"2026-05-19","u":"kg"},{"c":"MULC11-2160","n":"B/L Grass-Fed Black Angus Beef Tenderloin","b":"Mulwarra","q":500.0,"d":"2026-05-19","u":"kg"},{"c":"MULC11-2140","n":"B/L Grass-Fed Black Angus Beef Striploin","b":"Mulwarra","q":100.0,"d":"2026-05-19","u":"kg"},{"c":"MULC11-2240","n":"B/L Grass-Fed Black Angus Beef Cube Roll","b":"Mulwarra","q":250.0,"d":"2026-05-19","u":"kg"},{"c":"BLAC12-21319","n":"B/L Grain-Fed Wagyu S Beef Tri Tip MS9+","b":"Blackmore","q":31.4,"d":"2026-05-19","u":"kg"},{"c":"KIDC12-1604","n":"B/I Grain Fed Wagyu Beef Tomahawk Slab MS2/3","b":"Kidman","q":60.0,"d":"2026-05-19","u":"kg"},{"c":"KIDC12-1609","n":"B/I Grain Fed Wagyu Beef OP ribs MS2/3","b":"Kidman","q":30.0,"d":"2026-05-19","u":"kg"},{"c":"KIDC12-1552","n":"B/I Grain Fed Wagyu Beef Shortloin MS2/3","b":"Kidman","q":100.0,"d":"2026-05-19","u":"kg"},{"c":"KIDC12-24694","n":"B/L Grain Fed Wagyu Beef Short Rib Meat MS4/5","b":"Kidman","q":50.0,"d":"2026-05-19","u":"kg"},{"c":"KIDC12-2240","n":"B/L Grain Fed Wagyu Beef Rib Eye Roll MS2/3","b":"Kidman","q":120.0,"d":"2026-05-19","u":"kg"},{"c":"KIDC12-2140","n":"B/L Grain Fed Wagyu Beef Striploin MS2/3","b":"Kidman","q":150.0,"d":"2026-05-19","u":"kg"},{"c":"KIDC12-2160","n":"B/L Grain Fed Wagyu Beef Tenderloin MS2/3","b":"Kidman","q":40.0,"d":"2026-05-19","u":"kg"},{"c":"KIDC12-2430","n":"B/L Grain Fed Wagyu Beef Intercostals MS2/3","b":"Kidman","q":140.0,"d":"2026-05-19","u":"kg"},{"c":"KIDC12-2268","n":"B/L Grain Fed Wagyu  Beef Chuck Eye Roll MS2/3","b":"Kidman","q":250.0,"d":"2026-05-19","u":"kg"},{"c":"KIDC12-2266","n":"B/L Grain Fed Wagyu Beef Chuck Tail Flap MS2/3","b":"Kidman","q":100.0,"d":"2026-05-19","u":"kg"},{"c":"KIDC12-2303","n":"B/L Grain Fed Wagyu S Beef Oyster Blade MS2/3","b":"Kidman","q":100.0,"d":"2026-05-19","u":"kg"},{"c":"2GRC12-2142","n":"B/L Grain Fed Wagyu Beef Striploin MS9+","b":"2GR","q":40.0,"d":"2026-05-19","u":"kg"},{"c":"2GRC12-20859","n":"B/L Grain Fed Wagyu S Beef Rump Cap MS9+","b":"2GR","q":100.0,"d":"2026-05-19","u":"kg"},{"c":"2GRC12-2204","n":"B/L Grain Fed Wagyu S Beef Thick Skirt","b":"2GR","q":120.0,"d":"2026-05-19","u":"kg"},{"c":"2GRC12-23028","n":"B/L Grain Fed Wagyu S Beef Shoulder Tender MS8/9","b":"2GR","q":40.0,"d":"2026-05-19","u":"kg"},{"c":"2GRC12-2302","n":"B/L Grain Fed Wagyu S Beef Shoulder Tender MS9","b":"2GR","q":80.0,"d":"2026-05-19","u":"kg"},{"c":"2GRC12-22689","n":"B/L Grain Fed Wagyu Beef Chuck Eye Roll MS9+","b":"2GR","q":100.0,"d":"2026-05-19","u":"kg"},{"c":"2GRC12-2070","n":"B/L Grain Fed Wagyu S Beef Knuckle MS9+","b":"2GR","q":350.0,"d":"2026-05-19","u":"kg"}]},{"po":"4003037","raw_po":"4003037 (Free)","label":"260619-MUL#2656","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Bachelor","MS2+ Bachelor","AMH White","Riverina"],"date":"2026-05-19","items":[{"c":"BACC11-2160","n":"B/L Grain-Fed Black Angus YP Beef Tenderloin MS2+","b":"Bachelor","q":400.0,"d":"2026-05-19","u":"kg"},{"c":"BACC11-2140","n":"B/L Grain-Fed Black Angus YP Beef Striploin MS2+","b":"Bachelor","q":900.0,"d":"2026-05-19","u":"kg"},{"c":"BACC11-2240","n":"B/L Grain-Fed Black Angus YP Beef Cube Roll MS2+","b":"Bachelor","q":1300.0,"d":"2026-05-19","u":"kg"},{"c":"BACC11-2210","n":"B/L Grain-Fed Black Angus YP Beef Flank Steak MS2+","b":"Bachelor","q":800.0,"d":"2026-05-19","u":"kg"},{"c":"BACC11-2275","n":"B/L Grain-Fed Black Angus YP Beef Chuck Roll MS2+","b":"Bachelor","q":450.0,"d":"2026-05-19","u":"kg"},{"c":"BACC11-2206","n":"B/L Grain Fed Black Angus YP Beef Flap Meat","b":"MS2+ Bachelor","q":450.0,"d":"2026-05-19","u":"kg"},{"c":"BACC11-2085","n":"B/L Grain Fed YP Black Angus Rump Cap MS2+","b":"Bachelor","q":300.0,"d":"2026-05-19","u":"kg"},{"c":"AMWC11-2240","n":"B/L Grain-Fed PR Beef Rib Cube Roll","b":"AMH White","q":600.0,"d":"2026-05-19","u":"kg"},{"c":"AMWC11-2140","n":"B/L Grain Fed PR Beef Striploin 4kg up","b":"AMH White","q":350.0,"d":"2026-05-19","u":"kg"},{"c":"AMWC11-2210","n":"B/L Grain-Fed S Beef Flank Steak","b":"AMH White","q":350.0,"d":"2026-05-19","u":"kg"},{"c":"AMWC11-2085","n":"B/L Grain Fed PR Beef Rump Cap","b":"AMH White","q":350.0,"d":"2026-05-19","u":"kg"},{"c":"RIVC11-2160","n":"B/L Grain Fed Black Angus Tenderloin MS3+","b":"Riverina","q":150.0,"d":"2026-05-19","u":"kg"},{"c":"RIVC11-2142","n":"B/L Grain Fed Black Angus 1 Rib Striploin MS3+","b":"Riverina","q":300.0,"d":"2026-05-19","u":"kg"},{"c":"RIVC11-2240","n":"B/L Grain Fed Black Angus 7 Rib Cuberoll MS3+","b":"Riverina","q":500.0,"d":"2026-05-19","u":"kg"}]},{"po":"4003038","raw_po":"4003038 (Printed)","label":"260530-MUL2627-2850","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Glacier","Blackmore"],"date":"2026-05-28","items":[{"c":"GLAF21-0011","n":"B/L Patagonian Toothfish Portion 150g","b":"Glacier","q":432.0,"d":"2026-05-28","u":"kg"},{"c":"GLAF21-0001","n":"B/L Patagonian Toothfish Fillet 600g-2kg","b":"Glacier","q":123.28,"d":"2026-05-28","u":"kg"},{"c":"BLAF12-25619","n":"B/L Grain-Fed Wagyu S Beef Trim 75CL BP","b":"Blackmore","q":500.0,"d":"2026-05-28","u":"kg"}]},{"po":"4003040","raw_po":"4003040 (Printed)","label":"260625-MUL#2776","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Kidman","2GR","Blackmore","Shimo","Darling Down","Marrunga Marble"],"date":"2026-06-25","items":[{"c":"KIDF12-1552","n":"B/I F Grain Fed Wagyu Beef Shortloin MS2/3","b":"Kidman","q":200.0,"d":"2026-06-25","u":"kg"},{"c":"KIDF12-20902","n":"B/L Grain FedWagyu Beef D Rump S2/3","b":"Kidman","q":443.38,"d":"2026-06-25","u":"kg"},{"c":"KIDF12-0001","n":"B/L Grain Fed Wagyu Beef Burger 150g IW Thermo","b":"Kidman","q":921.6,"d":"2026-06-25","u":"kg"},{"c":"KIDF12-20704","n":"B/L Grain Fed Wagyu S Beef Knuckle M4/5","b":"Kidman","q":1000.0,"d":"2026-06-25","u":"kg"},{"c":"2GRF12-22689","n":"B/L F Grain Fed Wagyu Beef Chuck Eye Roll MS9+","b":"2GR","q":1544.34,"d":"2026-06-25","u":"kg"},{"c":"BLAF12-25619","n":"B/L Grain-Fed Wagyu S Beef Trim 75CL BP","b":"Blackmore","q":1000.0,"d":"2026-06-25","u":"kg"},{"c":"SHIF12-2580","n":"B/L Grain Fed Wagyu S Beef Mince 75CL 10kg","b":"Shimo","q":1000.0,"d":"2026-06-25","u":"kg"},{"c":"DADF12-2090","n":"B/L Grain Fed Wagyu Beef D Rump MS4/5","b":"Darling Down","q":700.0,"d":"2026-06-25","u":"kg"},{"c":"MARF13-4756","n":"B/I Lamb Rack (frenched cap on)","b":"Marrunga Marble","q":200.0,"d":"2026-06-25","u":"kg"},{"c":"MARF13-2095","n":"B/I Lamb Hindshank","b":"Marrunga Marble","q":300.0,"d":"2026-06-25","u":"kg"},{"c":"MARF13-2085","n":"B/L Lamb Chump/Rump (cap on)","b":"Marrunga Marble","q":300.0,"d":"2026-06-25","u":"kg"},{"c":"MARF13-25601","n":"B/L Lamb Trimmings 65CL","b":"Marrunga Marble","q":1000.0,"d":"2026-06-25","u":"kg"},{"c":"MARF13-5011","n":"B/L Lamb Flap","b":"Marrunga Marble","q":1000.0,"d":"2026-06-25","u":"kg"}]},{"po":"4003041","raw_po":"4003041 (Printed)","label":"260708-MUL#2867","creditor":"MULWARRA PTY LTD ( AUSTRALIA)","brands":["Mulwarra","Kidman","2GR","Shimo"],"date":"2026-07-08","items":[{"c":"MULC11-2090","n":"B/L Grass-Fed Black Angus Beef D Rump","b":"Mulwarra","q":800.0,"d":"2026-07-08","u":"kg"},{"c":"MULC11-23101","n":"B/L Grass-Fed Black Angus Beef Chuck Tender","b":"Mulwarra","q":400.0,"d":"2026-07-08","u":"kg"},{"c":"KIDC12-1604","n":"B/I Grain Fed Wagyu Beef Tomahawk Slab MS2/3","b":"Kidman","q":60.0,"d":"2026-07-08","u":"kg"},{"c":"KIDC12-1552","n":"B/I Grain Fed Wagyu Beef Shortloin MS2/3","b":"Kidman","q":100.0,"d":"2026-07-08","u":"kg"},{"c":"KIDC12-24694","n":"B/L Grain Fed Wagyu Beef Short Rib Meat MS4/5","b":"Kidman","q":50.0,"d":"2026-07-08","u":"kg"},{"c":"KIDC12-2240","n":"B/L Grain Fed Wagyu Beef Rib Eye Roll MS2/3","b":"Kidman","q":60.0,"d":"2026-07-08","u":"kg"},{"c":"KIDC12-2140","n":"B/L Grain Fed Wagyu Beef Striploin MS2/3","b":"Kidman","q":100.0,"d":"2026-07-08","u":"kg"},{"c":"KIDC12-2430","n":"B/L Grain Fed Wagyu Beef Intercostals MS2/3","b":"Kidman","q":140.0,"d":"2026-07-08","u":"kg"},{"c":"KIDC12-2268","n":"B/L Grain Fed Wagyu  Beef Chuck Eye Roll MS2/3","b":"Kidman","q":200.0,"d":"2026-07-08","u":"kg"},{"c":"KIDC12-2266","n":"B/L Grain Fed Wagyu Beef Chuck Tail Flap MS2/3","b":"Kidman","q":120.0,"d":"2026-07-08","u":"kg"},{"c":"KIDC12-2303","n":"B/L Grain Fed Wagyu S Beef Oyster Blade MS2/3","b":"Kidman","q":100.0,"d":"2026-07-08","u":"kg"},{"c":"2GRC12-2142","n":"B/L Grain Fed Wagyu Beef Striploin MS9+","b":"2GR","q":40.0,"d":"2026-07-08","u":"kg"},{"c":"2GRC12-20859","n":"B/L Grain Fed Wagyu S Beef Rump Cap MS9+","b":"2GR","q":100.0,"d":"2026-07-08","u":"kg"},{"c":"2GRC12-2204","n":"B/L Grain Fed Wagyu S Beef Thick Skirt","b":"2GR","q":80.0,"d":"2026-07-08","u":"kg"},{"c":"2GRC12-23028","n":"B/L Grain Fed Wagyu S Beef Shoulder Tender MS8/9","b":"2GR","q":40.0,"d":"2026-07-08","u":"kg"},{"c":"2GRC12-2302","n":"B/L Grain Fed Wagyu S Beef Shoulder Tender MS9","b":"2GR","q":90.0,"d":"2026-07-08","u":"kg"},{"c":"2GRC12-23109","n":"B/L C Grain Fed Wagyu S Beef Chuck Tender MS9+","b":"2GR","q":40.0,"d":"2026-07-08","u":"kg"},{"c":"2GRC12-22689","n":"B/L Grain Fed Wagyu Beef Chuck Eye Roll MS9+","b":"2GR","q":80.0,"d":"2026-07-08","u":"kg"},{"c":"2GRC12-2070","n":"B/L Grain Fed Wagyu S Beef Knuckle MS9+","b":"2GR","q":400.0,"d":"2026-07-08","u":"kg"},{"c":"2GRC12-20009","n":"B/L Grain Fed Wagyu S Beef Topside Cap Off MS9+","b":"2GR","q":40.0,"d":"2026-07-08","u":"kg"},{"c":"SHIC12-22067","n":"B/L Grain-Fed Wagyu S Beef Flap Meat MS7/8","b":"Shimo","q":300.0,"d":"2026-07-08","u":"kg"},{"c":"SHIC12-22076","n":"B/L Grain-Fed Wagyu S Beef Flank Steak MB6/7","b":"Shimo","q":150.0,"d":"2026-07-08","u":"kg"},{"c":"SHIC12-22058","n":"B/L Grain-Fed Wagyu S Beef Inside Skirt MB8/9","b":"Shimo","q":60.0,"d":"2026-07-08","u":"kg"},{"c":"SHIC12-20409","n":"B/L Grain-Fed Wagyu S Beef Eye Round MS9+","b":"Shimo","q":150.0,"d":"2026-07-08","u":"kg"},{"c":"SHIC12-16034","n":"B/I Grain-Fed Wagyu S Beef Tomahawk Portion MB 4/5","b":"Shimo","q":120.0,"d":"2026-07-08","u":"kg"},{"c":"SHIC12-16036","n":"B/I Grain-Fed Wagyu S Beef Tomahawk Portion MB 6","b":"Shimo","q":40.0,"d":"2026-07-08","u":"kg"},{"c":"SHIC12-16044","n":"B/I C Grain Fed Wagyu S Beef Tomahawk Slab MS4/5","b":"Shimo","q":40.0,"d":"2026-07-08","u":"kg"},{"c":"SHIC12-16096","n":"B/I Grain-Fed Wagyu S Beef OP Rib MS6/7","b":"Shimo","q":20.0,"d":"2026-07-08","u":"kg"},{"c":"SHIC12-21604","n":"B/L Grain Fed Wagyu S Beef Tenderloin MB4/5","b":"Shimo","q":250.0,"d":"2026-07-08","u":"kg"},{"c":"SHIC12-21606","n":"B/L Grain-Fed Wagyu S Beef Tenderloin MS6","b":"Shimo","q":200.0,"d":"2026-07-08","u":"kg"},{"c":"SHIC12-21404","n":"B/L Grain-Fed Wagyu S Beef Striploin MB4/5","b":"Shimo","q":200.0,"d":"2026-07-08","u":"kg"},{"c":"SHIC12-21408","n":"B/L GF Wagyu S Beef 3 Rib Striploin MS8/9","b":"Shimo","q":60.0,"d":"2026-07-08","u":"kg"},{"c":"SHIC12-22404","n":"B/L Grain-Fed Wagyu S Beef Cube Roll MB4/5","b":"Shimo","q":100.0,"d":"2026-07-08","u":"kg"}]},{"po":"4003043","raw_po":"4003043 (Completed)","label":"260520-VTD-SG","creditor":"THUC PHAM VINH THANH DAT","brands":["VTD"],"date":"2026-05-20","items":[{"c":"VTDC42-0021","n":"Pasteurized Egg Yolk 1l","b":"VTD","q":10.0,"d":"2026-05-20","u":"pc"}]},{"po":"4003019","raw_po":"4003019 (Completed)","label":"260518-HOG","creditor":"THUY SAN HOANG GIANG, --","brands":["Marea"],"date":"2026-05-18","items":[{"c":"MREF23-0001","n":"Black Tiger Shrimp (size 6-8) 2kg","b":"Marea","q":300.0,"d":"2026-05-18","u":"kg"}]}];
+// ═══════════════════════════════════════════
+// CONSTANTS & STATE
+// ═══════════════════════════════════════════
+const TODAY = new Date();
+const TK = fmt(TODAY); // YYYY-MM-DD
+
+function fmt(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Arrival determined purely by fulfillment date <= today
+// ARR kept for compatibility but not used for status
+let ARR = {};
+
+// Indexes
+let IDX_DATE = {};   // date -> [po, ...]
+let IDX_PO   = {};   // po   -> po object
+
+let selDate = null;
+let selPO   = null;
+let curM    = 4;
+
+// Working data array (starts as PO, can be replaced by import)
+let DATA = PO;
+
+// ═══════════════════════════════════════════
+// INDEX BUILD
+// ═══════════════════════════════════════════
+function buildIdx(){
+  IDX_DATE = {}; IDX_PO = {};
+  DATA.forEach(p => {
+    IDX_PO[p.po] = p;
+    if(!IDX_DATE[p.date]) IDX_DATE[p.date] = [];
+    IDX_DATE[p.date].push(p);
+  });
+}
+
+// ═══════════════════════════════════════════
+// STATUS HELPERS
+// ═══════════════════════════════════════════
+function status(po){
+  const p = IDX_PO[po];
+  if(!p) return 'p';
+  // Arrived = fulfillment date <= today (date-only comparison)
+  if(p.date <= TK) return 'a';
+  return 'p';
+}
+function pillHTML(s){
+  const map = {a:['a','✓ Received'], p:['p','→ Pending'], o:['p','→ Pending']};
+  const [cls,txt] = map[s]||['p','→ Chờ'];
+  return `<span class="pill ${cls}">${txt}</span>`;
+}
+function fq(n, unit){
+  if(typeof n !== 'number') return String(n);
+  const s = n%1===0 ? String(n) : n.toFixed(2);
+  if(unit === 'kg') return s + ' kg';
+  if(unit === 'pc') return s + ' pc';
+  // fallback: no unit stored (old data) — use threshold heuristic
+  return s;
+}
+
+// ═══════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════
+function updateStats(){
+  const total = DATA.length;
+  const arr   = DATA.filter(p=>p.date <= TK).length;
+  const ovd   = 0; // no overdue — arrived is date-based
+  const pend  = total - arr - ovd;
+  const items = DATA.reduce((a,p)=>a+p.items.length, 0);
+  document.getElementById('st-po').textContent    = total;
+  document.getElementById('st-arr').textContent   = arr;
+  document.getElementById('st-pend').textContent  = pend;
+  document.getElementById('st-ovd').textContent   = ovd;
+  document.getElementById('st-items').textContent = items;
+  document.getElementById('app-sub').textContent  =
+    `${items} items · ${total} PO · ${arr} received · ${pend+ovd} pending`;
+}
+
+// ═══════════════════════════════════════════
+// CALENDAR RENDER
+// ═══════════════════════════════════════════
+function renderCal(m, elId){
+  const yr  = 2026;
+  const dim = new Date(yr, m+1, 0).getDate();
+  const pfx = `${yr}-${String(m+1).padStart(2,'0')}`;
+  const fd  = new Date(yr, m, 1).getDay();
+  const activeDays = Object.keys(IDX_DATE).filter(d=>d.startsWith(pfx));
+
+  let h = `<div class="cal-note">${activeDays.length} days with POs · click to view</div>`;
+  h += `<div class="cal-dheads">${['Su','Mo','Tu','We','Th','Fr','Sa'].map(x=>`<div class="dh">${x}</div>`).join('')}</div>`;
+  h += `<div class="cal-grid">`;
+
+  for(let i=0;i<fd;i++) h += `<div class="day"></div>`;
+
+  for(let d=1;d<=dim;d++){
+    const key = `${pfx}-${String(d).padStart(2,'0')}`;
+    const pos = IDX_DATE[key] || [];
+    const isT = key===TK, isSel = selDate===key, has = pos.length>0;
+    let cls = 'day';
+    if(has) cls += ' has';
+    if(isT) cls += ' today';
+    if(isSel) cls += ' sel';
+
+    let inner = `<div class="day-n">${d}</div>`;
+    if(has){
+      const totalItems = pos.reduce((a,p)=>a+p.items.length,0);
+      const brands = [...new Set(pos.flatMap(p=>p.brands))];
+      const dots   = pos.slice(0,8).map(p=>`<span class="dot ${status(p.po)}"></span>`).join('');
+      inner += `<div class="day-po">${pos.length} PO · ${totalItems} items</div>
+                <div class="day-brands">${brands.slice(0,2).join(' · ')}${brands.length>2?'…':''}</div>
+                <div class="day-dots">${dots}</div>`;
+    }
+    h += `<div class="${cls}"${has?` onclick="selectDate('${key}')"`:''}>${inner}</div>`;
+  }
+  h += `</div>`;
+  document.getElementById(elId).innerHTML = h;
+}
+
+function renderAllCals(){
+  renderCal(4,'cs4'); renderCal(5,'cs5'); renderCal(6,'cs6');
+}
+
+function switchM(m){
+  curM = m;
+  [4,5,6].forEach(i=>{
+    document.getElementById(`cs${i}`).classList.toggle('on', i===m);
+    document.getElementById(`tab${i}`).classList.toggle('on', i===m);
+  });
+  selDate = null; selPO = null; renderPanel();
+}
+
+// ═══════════════════════════════════════════
+// PANEL CONTROL
+// ═══════════════════════════════════════════
+function selectDate(k){
+  selDate = (selDate===k) ? null : k;
+  selPO   = null;
+  renderAllCals();
+  renderPanel();
+}
+function closePanel(){
+  selDate = null; selPO = null;
+  renderAllCals(); renderPanel();
+}
+
+function renderPanel(){
+  const panel = document.getElementById('panel');
+  const main  = document.getElementById('main');
+  if(!selDate){ panel.classList.remove('on'); main.classList.remove('split'); return; }
+  panel.classList.add('on'); main.classList.add('split');
+  selPO ? renderDetail() : renderList();
+}
+
+// ═══════════════════════════════════════════
+// LIST VIEW
+// ═══════════════════════════════════════════
+function renderList(){
+  const pos = IDX_DATE[selDate] || [];
+  const [yy,mm,dd] = [selDate.slice(0,4), selDate.slice(5,7), selDate.slice(8)];
+  const totalSP = pos.reduce((a,p)=>a+p.items.length,0);
+
+  document.getElementById('panel-head').innerHTML =`
+    <div class="panel-title-row">
+      <div>
+        <div class="panel-title">📅 ${dd}/${mm}/${yy}</div>
+        <div class="panel-sub">${pos.length} PO &nbsp;·&nbsp; ${totalSP} items</div>
+      </div>
+      <button class="panel-close" onclick="closePanel()">✕</button>
+    </div>`;
+
+  document.getElementById('panel-body').innerHTML = pos.length
+    ? pos.map(p => poCardHTML(p)).join('')
+    : `<div class="empty-state"><div class="empty-ico">📭</div><div>No POs found</div></div>`;
+}
+
+function poCardHTML(p){
+  const s   = status(p.po);
+  const chk = !!ARR[p.po];
+  const tq  = p.items.reduce((a,i)=>a+(i.q||0), 0);
+  const MAX = 8;
+  const show = p.items.slice(0, MAX);
+  const more = p.items.length - MAX;
+
+  const rows = show.map(it=>`
+    <div class="poc-row">
+      <div class="pr-code">${it.c}</div>
+      <div class="pr-name">${it.n}<div class="pr-brand">${it.b}</div></div>
+      <div class="pr-qty">${fq(it.q, it.u)}</div>
+    </div>`).join('');
+
+  const moreRow = more > 0
+    ? `<div class="poc-more">+${more} more items → click "Full Details"</div>` : '';
+
+  const bChips = p.brands.map(b=>`<span class="brand-chip">${b}</span>`).join('');
+
+  return `<div class="po-card">
+    <div class="poc-top">
+      <div class="poc-hd">
+        <span class="poc-num">#${p.po}</span>
+        ${pillHTML(s)}
+      </div>
+      <div class="poc-label">${p.label}</div>
+      <div class="poc-cred">🏭 ${p.creditor}</div>
+      <div class="poc-meta">
+        <span>📦 <strong>${p.items.length}</strong> items</span>
+        <span>⚖ <strong>${(()=>{
+          const kg=p.items.reduce((a,i)=>a+(i.u==='kg'?i.q:0),0);
+          const pc=p.items.reduce((a,i)=>a+(i.u==='pc'?i.q:0),0);
+          const parts=[];
+          if(kg>0) parts.push(fq(kg,'kg'));
+          if(pc>0) parts.push(fq(pc,'pc'));
+          return parts.join(' + ') || fq(tq);
+        })()}</strong></span>
+        <span>📅 ${p.date}</span>
+      </div>
+      <div class="brands-row">${bChips}</div>
+    </div>
+    <div class="poc-table">
+      <div class="poc-table-head"><div>Code</div><div>Name / Brand</div><div style="text-align:right">Qty</div></div>
+      ${rows}${moreRow}
+    </div>
+    <div class="poc-footer">
+      <div class="toggle-row">
+        <label class="sw">
+          <input type="checkbox" ${chk?'checked':''} onchange="toggleArr('${p.po}',this.checked)">
+          <span class="sw-track"></span>
+        </label>
+        <span class="sw-lbl">${chk?'✓ Arrived in warehouse':'Mark as received'}</span>
+      </div>
+      <button class="btn-detail" onclick="selPO='${p.po}';renderDetail()">Full Details ›</button>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// DETAIL VIEW
+// ═══════════════════════════════════════════
+function renderDetail(){
+  const p = IDX_PO[selPO];
+  if(!p){ selPO=null; renderList(); return; }
+  const s   = status(p.po);
+  const chk = !!ARR[p.po];
+  const tq  = p.items.reduce((a,i)=>a+(i.q||0), 0);
+
+  // Brand breakdown table
+  const bmap = {};
+  p.items.forEach(it=>{
+    if(!bmap[it.b]) bmap[it.b]={n:0,q:0};
+    bmap[it.b].n++; bmap[it.b].q += (it.q||0);
+  });
+  const bRows = Object.entries(bmap).map(([b,v])=>
+    `<div class="btbl-row">
+      <div class="btbl-brand">${b}</div>
+      <div class="btbl-cnt">${v.n} items</div>
+      <div class="btbl-qty">${fq(v.q)}</div>
+    </div>`).join('');
+
+  document.getElementById('panel-head').innerHTML =`
+    <div class="panel-title-row">
+      <div>
+        <div class="panel-title">${p.label || 'PO #'+p.po}</div>
+        <div class="panel-sub">PO #${p.po}</div>
+      </div>
+      <button class="panel-close" onclick="closePanel()">✕</button>
+    </div>`;
+
+  // All items rendered
+  const allRows = p.items.map(it=>`
+    <div class="it-row">
+      <div class="it-code">${it.c}</div>
+      <div class="it-name">${it.n}<div class="it-brand">${it.b}</div></div>
+      <div class="it-qty">${fq(it.q, it.u)}</div>
+      <div class="it-date">${(it.d||p.date).slice(5)}</div>
+    </div>`).join('');
+
+  document.getElementById('panel-body').innerHTML =`
+    <button class="back" onclick="selPO=null;renderList()">← Back to list</button>
+    <div class="det-card">
+      <div class="det-head">
+        <div>
+          <div class="det-title">
+            <span class="det-po-num">#${p.po}</span>
+            ${pillHTML(s)}
+          </div>
+        </div>
+      </div>
+      <div class="det-cred">🏭 ${p.creditor} &nbsp;·&nbsp; 📅 ${p.date}</div>
+      <div class="det-grid">
+        <div class="dg-item">Total: <strong>${(()=>{
+          const kg=p.items.reduce((a,i)=>a+(i.u==='kg'?i.q:0),0);
+          const pc=p.items.reduce((a,i)=>a+(i.u==='pc'?i.q:0),0);
+          const parts=[];
+          if(kg>0) parts.push(fq(kg,'kg'));
+          if(pc>0) parts.push(fq(pc,'pc'));
+          return parts.join(' + ') || fq(tq);
+        })()}</strong></div>
+        <div class="dg-item">${p.items.length} items · ${p.brands.length} brands</div>
+      </div>
+      <div class="brand-tbl">
+        <div class="btbl-head"><div>Brand</div><div style="text-align:right">Items</div><div style="text-align:right">Total Qty</div></div>
+        ${bRows}
+      </div>
+      <div class="det-toggle">
+        <label class="sw">
+          <input type="checkbox" ${chk?'checked':''} onchange="toggleArrDetail('${p.po}',this)">
+          <span class="sw-track"></span>
+        </label>
+        <span class="sw-lbl" id="arr-lbl-d">${chk?'✓ Arrived in warehouse':'Mark as received'}</span>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <span class="search-ico">🔍</span>
+      <input class="search-inp" placeholder="Search code, name, brand…" oninput="filterDet(this.value,'${p.po}')">
+    </div>
+    <div class="items-table">
+      <div class="it-head">
+        <div>Code</div>
+        <div>Product / Brand</div>
+        <div style="text-align:right">Qty (kg)</div>
+        <div>Date</div>
+      </div>
+      <div id="ilist">${allRows}</div>
+      <div class="it-foot">
+        <span id="ilist-count">${p.items.length} items</span>
+        <span>Total: <strong>${(()=>{
+          const kg=p.items.reduce((a,i)=>a+(i.u==='kg'?i.q:0),0);
+          const pc=p.items.reduce((a,i)=>a+(i.u==='pc'?i.q:0),0);
+          const parts=[];
+          if(kg>0) parts.push(fq(kg,'kg'));
+          if(pc>0) parts.push(fq(pc,'pc'));
+          return parts.join(' + ') || fq(tq);
+        })()}</strong></span>
+      </div>
+    </div>`;
+}
+
+function filterDet(q, po){
+  const p = IDX_PO[po]; if(!p) return;
+  const f = q.toLowerCase();
+  const fil = f ? p.items.filter(i=>
+    i.n.toLowerCase().includes(f)||i.c.toLowerCase().includes(f)||i.b.toLowerCase().includes(f)
+  ) : p.items;
+  const tq = fil.reduce((a,i)=>a+(i.q||0),0);
+  document.getElementById('ilist').innerHTML = fil.map(it=>`
+    <div class="it-row">
+      <div class="it-code">${it.c}</div>
+      <div class="it-name">${it.n}<div class="it-brand">${it.b}</div></div>
+      <div class="it-qty">${fq(it.q, it.u)}</div>
+      <div class="it-date">${(it.d||p.date).slice(5)}</div>
+    </div>`).join('');
+  document.getElementById('ilist-count').textContent = `${fil.length} items`;
+}
+
+// ═══════════════════════════════════════════
+// ARRIVAL TOGGLE
+// ═══════════════════════════════════════════
+function toggleArr(po, chk){
+  if(chk) ARR[po]=1; else delete ARR[po];
+  saveARR(); renderAllCals(); updateStats(); renderList();
+}
+function toggleArrDetail(po, el){
+  if(el.checked) ARR[po]=1; else delete ARR[po];
+  saveARR(); renderAllCals(); updateStats();
+  document.getElementById('arr-lbl-d').textContent = el.checked?'✓ Arrived in warehouse':'Mark as received';
+}
+
+// ═══════════════════════════════════════════
+// EXCEL IMPORT — Smart Auto-Parser
+// ═══════════════════════════════════════════
+
+function dzState(state, title, sub){
+  const dz = document.getElementById('drop-zone');
+  const svgUp = document.getElementById('dz-svg-up');
+  const svgOk = document.getElementById('dz-svg-ok');
+  const svgSpin = document.getElementById('dz-svg-spin');
+  dz.className = 'drop-zone' + (state ? ' dz-'+state : '');
+  if(state==='loading'){ svgUp.style.display='none'; svgOk.style.display='none'; svgSpin.style.display=''; }
+  else if(state==='ok'){ svgUp.style.display='none'; svgOk.style.display=''; svgSpin.style.display='none'; }
+  else { svgUp.style.display=''; svgOk.style.display='none'; svgSpin.style.display='none'; }
+  if(title) document.getElementById('dz-title').textContent = title;
+  if(sub !== undefined) document.getElementById('dz-sub').textContent = sub;
+}
+
+function dzDrag(e, over){
+  e.preventDefault();
+  const dz = document.getElementById('drop-zone');
+  if(over) dz.classList.add('drag'); else dz.classList.remove('drag');
+}
+
+function dzDrop(e){
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag');
+  const file = e.dataTransfer?.files?.[0];
+  if(file) processFile(file);
+}
+
+function onFileChange(inp){
+  const file = inp.files[0]; if(!file) return;
+  processFile(file);
+  inp.value='';
+}
+
+function processFile(file){
+  dzState('loading', 'Processing…', file.name);
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true,raw:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
+      if(!rows.length){ dzState('err','Import Error','Empty file'); toast('Empty file!','err'); return; }
+
+      // ── Detect format ─────────────────────────────────────────
+      // Structured PO Report: rows contain "Purchase order number" labels
+      const isStructured = rows.slice(0,30).some(r =>
+        r.some(v => String(v).toLowerCase().includes('purchase order number'))
+      );
+
+      let newData;
+      if(isStructured){
+        newData = parseStructuredReport(rows);
+      } else {
+        newData = parseFlatTable(rows);
+      }
+
+      if(!newData || !newData.length){
+        dzState('err','No POs found','Check file format');
+        toast('No valid POs found!','err');
+        return;
+      }
+
+      applyData(newData, file.name);
+    }catch(err){
+      dzState('err','File read error', err.message.slice(0,40));
+      toast('Error: '+err.message,'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Parse quantity robustly ─────────────────────────────────────
+// Handles: 1287.56 (number), "1,287.56" (en), "1.287,56" (de/vn), "1 287.56"
+function parseQty(v){
+  if(v === null || v === undefined || v === '') return 0;
+  if(typeof v === 'number') return isNaN(v) ? 0 : v;
+  let s = String(v).trim();
+  if(!s || s === 'nan' || s === 'NaN') return 0;
+  // If both comma and dot present, figure out which is decimal separator
+  const hasComma = s.includes(',');
+  const hasDot   = s.includes('.');
+  if(hasComma && hasDot){
+    // whichever appears last is the decimal separator
+    const lastComma = s.lastIndexOf(',');
+    const lastDot   = s.lastIndexOf('.');
+    if(lastDot > lastComma){
+      // dot is decimal: "1,287.56" → remove commas
+      s = s.replace(/,/g,'');
+    } else {
+      // comma is decimal: "1.287,56" → remove dots, replace comma with dot
+      s = s.replace(/\./g,'').replace(',','.');
+    }
+  } else if(hasComma && !hasDot){
+    // could be thousand sep "1,000" or decimal "1,5"
+    const parts = s.split(',');
+    if(parts.length === 2 && parts[1].length <= 2){
+      // treat as decimal: "1,5" → "1.5"
+      s = s.replace(',','.');
+    } else {
+      // treat as thousand sep: "1,000" → "1000"
+      s = s.replace(/,/g,'');
+    }
+  }
+  // remove spaces (thousand sep in some locales)
+  s = s.replace(/\s/g,'');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+// Format: blocks of rows. Each block has:
+//   Row: "Purchase order number" [col7] "4002975 (Completed)"  [col15] "Creditor" [col20] "..."
+//   Row: "Description" [col7] "desc-text"
+//   Row: "Purchase order date" [col7] date
+//   Row: "Fulfilment date" [col7] date
+//   Header row: "Line" / "Item - Description" / "Fulf.date" / "Ordered" / "Received"
+//   Item rows: line# / "CODE, Name, Brand" / date / qty / recv / unit
+function parseStructuredReport(rows){
+  const MAP = {};
+  let curPO = null;
+  let inItems = false;
+  // column positions discovered dynamically from the item header row
+  let COL = {desc:1, date:16, qty:19};
+
+  function cellAt(row, ...indices){
+    for(const i of indices){
+      const v = row[i];
+      if(v === undefined || v === null) continue;
+      // Preserve Date objects as-is (parseDateStr handles them)
+      if(v instanceof Date) return v;
+      const s = String(v).trim();
+      if(s) return s;
+    }
+    return '';
+  }
+
+  for(let i=0; i<rows.length; i++){
+    const row = rows[i];
+    const c0 = cellAt(row,0).toLowerCase();
+
+    if(c0.includes('purchase order number')){
+      inItems = false;
+      const rawPO = cellAt(row,7,8,9,10);
+      if(!rawPO) continue;
+      const poKey = rawPO.replace(/\s*\([^)]*\)/g,'').trim();
+      if(!poKey) continue;
+      const credRaw = cellAt(row,20,21,22,23,24,25);
+      let cred = credRaw;
+      const cm = credRaw.match(/^\d+,\s*(.+?)(?:,\s*--.*)?(,\s*[\w ]+,\s*[\d\s+()-]+)?\s*$/);
+      if(cm) cred = cm[1].trim();
+      for(const px of ['CONG TY TNHH ','CONG TY CO PHAN ','CONG TY CP ','CTY TNHH ']){
+        if(cred.toUpperCase().startsWith(px)){ cred=cred.slice(px.length); break; }
+      }
+      curPO = poKey;
+      if(!MAP[poKey]) MAP[poKey] = {po:poKey, raw_po:rawPO, creditor:cred||poKey, date:null, desc:'', brands:[], items:[]};
+      continue;
+    }
+
+    if(!curPO) continue;
+
+    if(c0 === 'description'){
+      const descVal = cellAt(row,7,8,9,10);
+      if(descVal && MAP[curPO] && !MAP[curPO].desc) MAP[curPO].desc = descVal;
+      continue;
+    }
+
+    if(c0.includes('fulfilment date') || c0.includes('fulfil')){
+      const d = parseDateStr(cellAt(row,7,8,9,10));
+      if(d) MAP[curPO].date = d;  // always overwrite — fulfilment date takes priority over PO date
+      continue;
+    }
+
+    // Item header row — scan it to find exact column positions dynamically
+    if(c0 === 'line' || (String(row[0]||''). toLowerCase() === 'line' && String(row[1]||''). toLowerCase().includes('item'))){
+      inItems = true;
+      COL = {desc:1, date:-1, qty:-1, unit:-1};
+      for(let ci=0; ci<row.length; ci++){
+        const h = String(row[ci]||'').toLowerCase().trim();
+        if((h.includes('item') || h.includes('desc')) && !h.includes('line') && COL.desc === 1) COL.desc = ci;
+        if((h === 'fulf.date' || (h.includes('fulf') && h.includes('date')) || h === 'date') && COL.date < 0) COL.date = ci;
+        if((h === 'ordered' || h === 'qty' || h === 'quantity') && COL.qty < 0) COL.qty = ci;
+        if((h === 'package' || h === 'unit' || h === 'uom') && COL.unit < 0) COL.unit = ci;
+      }
+      if(COL.date < 0) COL.date = 16;
+      if(COL.qty  < 0) COL.qty  = 19;
+      if(COL.unit < 0) COL.unit = 23;
+      continue;
+    }
+
+    if(c0.includes('payment condition') || c0.includes('cost centre')){
+      inItems = false;
+      continue;
+    }
+
+    if(inItems && curPO){
+      const descRaw  = cellAt(row, COL.desc, COL.desc+1, COL.desc+2);
+      // raw:false in sheet_to_json preserves Date objects from cellDates:true
+      const qtyVal   = row[COL.qty] ?? row[COL.qty+1] ?? row[COL.qty-1];
+      const qtyRaw   = parseQty(qtyVal);
+      const unitRaw  = String(row[COL.unit] ?? '').trim().toLowerCase();
+      const unit     = (unitRaw === 'kg') ? 'kg' : 'pc';
+      const dateVal  = cellAt(row, COL.date, COL.date+1, COL.date+2);
+      const itemDate = parseDateStr(dateVal) || MAP[curPO].date;
+
+      if(!descRaw) continue;
+      const dm = descRaw.match(/^([A-Z0-9][A-Z0-9\-]+),\s*(.+),\s*([^,]+)$/);
+      const code  = dm ? dm[1].trim() : '';
+      const name  = dm ? dm[2].trim() : descRaw;
+      const brand = dm ? dm[3].trim().replace(/\s*\(.*?\)\s*$/, '').trim() : '';
+
+      if(brand && !MAP[curPO].brands.includes(brand)) MAP[curPO].brands.push(brand);
+      MAP[curPO].items.push({c:code, n:name, b:brand, q:qtyRaw, u:unit, d:itemDate});
+    }
+  }
+
+  return Object.values(MAP).filter(p=>p.items.length>0);}
+
+// ── Parser 2: Flat table fallback ─────────────────────────────
+function parseFlatTable(rows){
+  let hi=0;
+  for(let i=0;i<Math.min(20,rows.length);i++){
+    if(rows[i].filter(c=>String(c).trim()).length>=3){hi=i;break;}
+  }
+  const cols = rows[hi].map(String);
+  const dataRows = rows.slice(hi+1);
+
+  function findCol(...hints){
+    for(let i=0;i<cols.length;i++){
+      const h=cols[i].toLowerCase().trim();
+      if(hints.some(x=>h.includes(x))) return i;
+    }
+    return -1;
+  }
+
+  const C = {
+    po:       findCol('purchase order number','po number','po num','order number'),
+    date:     findCol('fulf.date','fulfilment date','fulfil','fulf','delivery date'),
+    desc:     findCol('item - description','description','item description','desc'),
+    ordered:  findCol('ordered','qty','quantity','amount'),
+    unit:     findCol('package','unit','uom'),
+    creditor: findCol('creditor','supplier','vendor')
+  };
+
+  const MAP = {};
+  dataRows.forEach(row=>{
+    if(!row||!row.length) return;
+    const rawPO = C.po>=0 ? String(row[C.po]||'').trim() : '';
+    if(!rawPO||rawPO==='0') return;
+    const poKey = rawPO.replace(/\s*\([^)]*\)/g,'').trim();
+    if(!poKey) return;
+    const date = C.date>=0 ? parseDateStr(row[C.date]) : null;
+    if(!date) return;
+    const descRaw = C.desc>=0 ? String(row[C.desc]||'').trim() : '';
+    const qtyRaw  = C.ordered>=0 ? parseQty(row[C.ordered]) : 0;
+    const unitRaw = C.unit>=0 ? String(row[C.unit]||'').trim().toLowerCase() : '';
+    const unit    = (unitRaw === 'kg') ? 'kg' : 'pc';
+    const credRaw = C.creditor>=0 ? String(row[C.creditor]||'').trim() : '';
+    const dm = descRaw.match(/^([A-Z0-9][A-Z0-9\-]+),\s*(.+),\s*([^,]+)$/);
+    const code  = dm ? dm[1].trim() : '';
+    const name  = dm ? dm[2].trim() : descRaw;
+    const brand = dm ? dm[3].trim().replace(/\s*\(.*?\)\s*$/, '').trim() : '';
+    if(!MAP[poKey]){
+      let cred = credRaw;
+      const cm = credRaw.match(/^\d+,\s*(.+?)(?:,\s*--.*)?(\s*,\s*[\w ]+,\s*[\d\s+()-]+)?\s*$/);
+      if(cm) cred = cm[1].trim();
+      for(const px of ['CONG TY TNHH ','CONG TY CO PHAN ','CONG TY CP ','CTY TNHH ']){
+        if(cred.toUpperCase().startsWith(px)){ cred=cred.slice(px.length); break; }
+      }
+      MAP[poKey] = {po:poKey, raw_po:rawPO, creditor:cred||poKey, date, brands:[], items:[]};
+    }
+    if(brand && !MAP[poKey].brands.includes(brand)) MAP[poKey].brands.push(brand);
+    if(descRaw) MAP[poKey].items.push({c:code, n:name, b:brand, q:qtyRaw, u:unit, d:date});
+  });
+  return Object.values(MAP).filter(p=>p.items.length>0);
+}
+
+function parseDateStr(v){
+  if(!v||v==='0'||v==='false') return null;
+  // JS Date object (from SheetJS cellDates:true)
+  if(v instanceof Date && !isNaN(v)) return fmt(v);
+  // SheetJS may also pass date as a number (Excel serial) even with cellDates:true
+  if(typeof v === 'number' && v > 10000 && v < 110000)
+    return fmt(new Date(Math.round((v-25569)*86400000)));
+  const s = String(v).trim();
+  if(!s) return null;
+  // ISO format YYYY-MM-DD (most common from SheetJS formatted output)
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  // JS Date.toString() e.g. "Mon May 04 2026 00:00:00 GMT+0700"
+  const dm = s.match(/([A-Za-z]{3})\s+(\d{1,2})\s+(\d{4})/);
+  if(dm){
+    const MO={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+    const mo=MO[dm[1].toLowerCase()];
+    if(mo) return `${dm[3]}-${String(mo).padStart(2,'0')}-${dm[2].padStart(2,'0')}`;
+  }
+  // MM/DD/YYYY
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return `${m[3]}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+  // Mon/DD/YY or similar
+  m = s.match(/^([A-Za-z]{3})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if(m){
+    const MO={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+    const n=MO[m[1].toLowerCase()];
+    if(n){ let yr=+m[3]; if(yr<100)yr+=2000; return `${yr}-${String(n).padStart(2,'0')}-${m[2].padStart(2,'0')}`; }
+  }
+  // DD/MM/YYYY or DD-MM-YYYY
+  m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  // M/D/YY or M/D/YYYY (SheetJS raw:false format fallback)
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(m){ let yr=+m[3]; if(yr<100) yr+=2000; return `${yr}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`; }
+  // Excel serial as string
+  const n=parseFloat(s);
+  if(!isNaN(n)&&n>10000&&n<110000) return fmt(new Date(Math.round((n-25569)*86400000)));
+  return null;
+}
+
+function applyData(newData, filename){
+  // Build labels
+  const KWS = ['Oyster','Duck','Beef','Salmon','Barramundi','Egg Yolk','Egg White','Wagyu',
+                'Toothfish','Angus','Lamb','Sausage','Crab','Coconut','Burger','Shrimp',
+                'Cod','Pork','Chicken','Truffle','Snapper','Lobster','Abalone','Veal','Octopus'];
+  newData.forEach(p=>{
+    if(!p.date){ const d=p.items.map(i=>i.d).filter(Boolean).sort()[0]; if(d) p.date=d; }
+    // Use Description field from Excel if present, otherwise build from brands/keywords
+    if(p.desc){
+      p.label = p.desc;
+    } else {
+      const names = p.items.map(i=>i.n);
+      const kws = KWS.filter(k=>names.some(n=>n.includes(k))).slice(0,2);
+      const bs = p.brands.slice(0,2).join(' + ')+(p.brands.length>2?` +${p.brands.length-2}`:'');
+      p.label = bs + (kws.length?' · '+kws.join(' · '):'');
+      if(!p.label) p.label = p.po;
+    }
+  });
+
+  DATA = newData;
+  buildIdx(); renderAllCals(); updateStats();
+  selDate=null; selPO=null; renderPanel();
+
+  const totalItems = newData.reduce((a,p)=>a+p.items.length,0);
+  const shortName = filename.replace(/^.*[/\\]/, '').slice(0,28);
+  dzState('ok', `${newData.length} PO · ${totalItems} items`, `✓ ${shortName}`);
+  toast(`✓ Import successful: ${newData.length} POs, ${totalItems} items`, 'ok');
+}
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+function toast(msg, type){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} on`;
+  setTimeout(()=>t.className='toast', 3500);
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+buildIdx();
+renderAllCals();
+updateStats();
+</script>
+</body>
+</html>
